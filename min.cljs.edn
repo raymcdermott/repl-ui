@@ -1,0 +1,6 @@
+{:main            repl.repl.ziggy.core
+ :output-to       "resources/public/js/compiled/app.js"
+ :output-dir      "resources/public/js/compiled/out"
+ :asset-path      "js/compiled/out"
+ :closure-defines {repl.repl.ziggy.config/TAIL_SERVER "repl.extemporay.io"}
+ :external-config {:devtools/config {:features-to-install :all}}}
