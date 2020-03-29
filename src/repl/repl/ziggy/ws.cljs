@@ -56,6 +56,7 @@
 ;; The WS connection is established ... get the team name and secret
 (defmethod -event-msg-handler :chsk/handshake
   []
+  (println ::handshake)
   (re-frame/dispatch [:repl.repl.ziggy.events/team-bootstrap]))
 
 (defonce router_ (atom nil))
