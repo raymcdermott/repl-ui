@@ -57,9 +57,10 @@
     (fn []
       (when-not @logged-in
         (let [{:keys [team-name team-secret]} @team-data
-              form-data  (reagent/atom {:user      ""
-                                        :team-name team-name
-                                        :secret    team-secret})
+              user       ()
+              form-data  (reagent/atom {:username  "ray"
+                                        :team-name "team-name"
+                                        :secret    "team-secret"})
               process-ok (fn [] (re-frame/dispatch [::events/login @form-data]))]
           [modal-panel
            :backdrop-color "lightblue"

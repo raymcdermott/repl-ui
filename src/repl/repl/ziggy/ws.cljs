@@ -1,13 +1,14 @@
 (ns repl.repl.ziggy.ws
   (:require
     goog.date.Date
-    [taoensso.encore :refer [have have?]]
+    [taoensso.encore :as encore :refer [have have?]]
     [taoensso.timbre :refer [tracef debugf infof warnf errorf]]
     [taoensso.sente :as sente :refer [cb-success?]]
     [taoensso.sente.packers.transit :as sente-transit]
     ;    [cljs.core.async]
     [re-frame.core :as re-frame]
-    [repl.repl.ziggy.config :as config]))
+    [repl.repl.ziggy.config :as config]
+    [taoensso.timbre :as timbre]))
 
 ; --- WS client ---
 (declare chsk ch-chsk chsk-send! chsk-state)
@@ -37,13 +38,13 @@
   (let [push-event (first ?data)
         push-data  (first (rest ?data))]
     (cond
-      (= push-event :reptile/keystrokes)
+      (= push-event :repl-repl/keystrokes)
       (re-frame/dispatch [:repl.repl.ziggy.events/network-repl-editor-form-update push-data])
 
-      (= push-event :reptile/editors)
+      (= push-event :repl-repl/editors)
       (re-frame/dispatch [:repl.repl.ziggy.events/repl-editors push-data])
 
-      (= push-event :reptile/eval)
+      (= push-event :repl-repl/eval)
       (re-frame/dispatch [:repl.repl.ziggy.events/eval-result push-data])
 
       (= push-event :chsk/ws-ping)

@@ -1,4 +1,4 @@
-{:deps    {org.clojure/clojure        {:mvn/version "1.10.0"}
+{:deps    {org.clojure/clojure        {:mvn/version "1.10.1"}
 
            org.clojure/tools.logging  {:mvn/version "0.4.0"}
            com.taoensso/sente         {:mvn/version "1.13.1"}
@@ -9,11 +9,13 @@
            re-com                     {:mvn/version "2.3.0"}
 
            cljsjs/codemirror          {:mvn/version "5.31.0-0"}
-           cljsjs/parinfer-codemirror {:mvn/version "1.4.1-2"}}
+           cljsjs/parinfer-codemirror {:mvn/version "1.4.1-2"}
+
+           repl-repl/specs            {:local/root "../repl-specs"}}
 
  :aliases {:fig       {:extra-paths ["resources" "target"]
-                       :extra-deps  {org.clojure/clojurescript       {:mvn/version "1.10.439"}
-                                     com.bhauman/figwheel-main       {:mvn/version "0.1.9"}
+                       :extra-deps  {org.clojure/clojurescript       {:mvn/version "1.10.597"}
+                                     com.bhauman/figwheel-main       {:mvn/version "0.2.3"}
                                      com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"}}
                        :main-opts   ["-m" "figwheel.main"]}
 
@@ -21,18 +23,4 @@
            :repl      {:jvm-opts    ["-Xmx1g" "-Xms1g"]
                        :extra-paths ["dev"]
                        :extra-deps  {clojure-watch {:mvn/version "0.1.14"}}
-                       :main-opts   ["-m" "figwheel.main" "-b" "repl" "-r"]}
-
-           ;; Use ~/.clojure/deps.edn to overrides
-           :band      {:extra-paths ["../server/dev"]
-                       :extra-deps  {repl-repl/band {:local/root "/Users/ray/dev/repl-repling/repl-repl/server"}}}
-
-           ;; Start the client and the server
-           :band-repl {:jvm-opts    ["-Xmx1g" "-Xms1g"]
-                       :extra-paths ["dev"]
-                       :extra-deps  {clojure-watch {:mvn/version "0.1.14"}}
-                       :main-opts   ["-i" "@repl/repl/gig.clj"
-                                     "-m" "figwheel.main" "-b" "dev" "-r"]}
-
-           :min       {:jvm-opts  ["-Xmx2g" "-Xms2g"]
-                       :main-opts ["-m" "figwheel.main" "-O" "advanced" "-bo" "min"]}}}
+                       :main-opts   ["-m" "figwheel.main" "-b" "repl" "-r"]}}}

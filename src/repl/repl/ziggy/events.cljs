@@ -1,15 +1,16 @@
 (ns repl.repl.ziggy.events
   (:require
     goog.date.Date
-    [re-frame.core :as re-frame :refer [reg-event-db reg-event-fx reg-fx]]
     [cljs.tools.reader.edn :as rdr]
     [clojure.core.async]
     [clojure.string :as string]
+    [re-frame.core :as re-frame :refer [reg-event-db reg-event-fx reg-fx]]
     [taoensso.sente :as sente]
+    [repl.repl.ziggy.code-mirror :as code-mirror]
+    [repl.repl.ziggy.db :as db]
     [repl.repl.ziggy.helpers :refer [js->cljs]]
     [repl.repl.ziggy.ws :as ws]
-    [repl.repl.ziggy.db :as db]
-    [repl.repl.ziggy.code-mirror :as code-mirror]))
+    [repl.repl.user :as user]))
 
 (def default-server-timeout 3000)
 
@@ -141,10 +142,10 @@
   ::send-repl-eval
   (fn [[source team-name form]]
     (when-not (string/blank? form)
-      (ws/chsk-send! [:reptile/repl {:form      form
-                                     :team-name team-name
-                                     :source    source
-                                     :forms     form}]
+      (ws/chsk-send! [:repl-repl/repl {:form      form
+                                       :team-name team-name
+                                       :source    source
+                                       :forms     form}]
                      (or (:timeout form) default-server-timeout)))))
 
 (reg-event-fx
@@ -155,30 +156,30 @@
       {:db              (assoc db :form-to-eval form-to-eval)
        ::send-repl-eval [:user team-name form-to-eval]})))
 
-(reg-fx
-  ::get-team-data
-  (fn [uuid]
-    (ws/chsk-send! [:reptile/team-random-data uuid]
-                   default-server-timeout
-                   (fn [reply]
-                     (if (and (sente/cb-success? reply))
-                       (re-frame/dispatch [::team-data reply])
-                       (js/alert "Cannot start the team"))))))
+#_(reg-fx
+    ::get-team-data
+    (fn [uuid]
+      (ws/chsk-send! [:repl-repl/team-random-data uuid]
+                     default-server-timeout
+                     (fn [reply]
+                       (if (and (sente/cb-success? reply))
+                         (re-frame/dispatch [::team-data reply])
+                         (js/alert "Cannot start the team"))))))
 
-(reg-event-fx
-  ::team-bootstrap
-  (fn [{:keys [db]}]
-    (let [now   (->> (.now js/Date)
-                     str
-                     (drop 2)
-                     distinct
-                     shuffle
-                     (map str)
-                     (apply str))
-          uuid  (random-uuid)
-          token (apply str (interleave now (str uuid)))]
-      {:db             (assoc db :team-defined false)
-       ::get-team-data [token]})))
+#_(reg-event-fx
+    ::team-bootstrap
+    (fn [{:keys [db]}]
+      (let [now   (->> (.now js/Date)
+                       str
+                       (drop 2)
+                       distinct
+                       shuffle
+                       (map str)
+                       (apply str))
+            uuid  (random-uuid)
+            token (apply str (interleave now (str uuid)))]
+        {:db             (assoc db :team-defined false)
+         ::get-team-data [token]})))
 
 (reg-event-db
   ::team-data
@@ -194,11 +195,13 @@
 (reg-fx
   ::server-login
   (fn [{:keys [options timeout]}]
-    (ws/chsk-send! [:reptile/login options] (or timeout default-server-timeout)
-                   (fn [reply]
-                     (if (and (sente/cb-success? reply) (= reply :login-ok))
-                       (re-frame/dispatch [::logged-in-user (:user options)])
-                       (js/alert "Login failed"))))))
+    (let [user (user/->user (:username options)
+                            (:network-user-id options))]
+      (ws/chsk-send! [:repl-repl/login user] (or timeout default-server-timeout)
+                     (fn [reply]
+                       (if (and (sente/cb-success? reply) (= reply :login-ok))
+                         (re-frame/dispatch [::logged-in-user (:username options)])
+                         (js/alert "Login failed")))))))
 
 (reg-event-fx
   ::login
@@ -213,7 +216,7 @@
 (reg-fx
   ::server-logout
   (fn [{:keys [options timeout]}]
-    (ws/chsk-send! [:reptile/logout options] (or timeout default-server-timeout))))
+    (ws/chsk-send! [:repl-repl/logout options] (or timeout default-server-timeout))))
 
 (reg-event-fx
   ::logout
@@ -373,6 +376,7 @@
 (reg-event-db
   ::logged-in-user
   (fn [db [_ user-name]]
+    (println ::logged-in-user user-name)
     (assoc db :user user-name :local-repl-editor {:name user-name})))
 
 (reg-event-db
