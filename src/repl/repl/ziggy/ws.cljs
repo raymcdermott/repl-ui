@@ -37,13 +37,13 @@
   (let [push-event (first ?data)
         push-data  (first (rest ?data))]
     (cond
-      (= push-event :reptile/keystrokes)
+      (= push-event :repl-repl/keystrokes)
       (re-frame/dispatch [:repl.repl.ziggy.events/network-repl-editor-form-update push-data])
 
-      (= push-event :reptile/editors)
+      (= push-event :repl-repl/editors)
       (re-frame/dispatch [:repl.repl.ziggy.events/repl-editors push-data])
 
-      (= push-event :reptile/eval)
+      (= push-event :repl-repl/eval)
       (re-frame/dispatch [:repl.repl.ziggy.events/eval-result push-data])
 
       (= push-event :chsk/ws-ping)
@@ -55,6 +55,7 @@
 ;; The WS connection is established ... get the team name and secret
 (defmethod -event-msg-handler :chsk/handshake
   []
+  (println ::handshake)
   (re-frame/dispatch [:repl.repl.ziggy.events/team-bootstrap]))
 
 (defonce router_ (atom nil))

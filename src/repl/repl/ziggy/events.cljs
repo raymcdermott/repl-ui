@@ -6,6 +6,7 @@
     [clojure.core.async]
     [clojure.string :as string]
     [taoensso.sente :as sente]
+    [repl.repl.user :as repl-user]
     [repl.repl.ziggy.helpers :refer [js->cljs]]
     [repl.repl.ziggy.ws :as ws]
     [repl.repl.ziggy.db :as db]
@@ -141,10 +142,10 @@
   ::send-repl-eval
   (fn [[source team-name form]]
     (when-not (string/blank? form)
-      (ws/chsk-send! [:reptile/repl {:form      form
-                                     :team-name team-name
-                                     :source    source
-                                     :forms     form}]
+      (ws/chsk-send! [:repl-repl/repl {:form      form
+                                       :team-name team-name
+                                       :source    source
+                                       :forms     form}]
                      (or (:timeout form) default-server-timeout)))))
 
 (reg-event-fx
@@ -158,7 +159,8 @@
 (reg-fx
   ::get-team-data
   (fn [uuid]
-    (ws/chsk-send! [:reptile/team-random-data uuid]
+    (println ::get-team-data uuid)
+    (ws/chsk-send! [:repl-repl/team-random-data uuid]
                    default-server-timeout
                    (fn [reply]
                      (if (and (sente/cb-success? reply))
@@ -194,7 +196,8 @@
 (reg-fx
   ::server-login
   (fn [{:keys [options timeout]}]
-    (ws/chsk-send! [:reptile/login options] (or timeout default-server-timeout)
+    (println ::server-login options)
+    (ws/chsk-send! [:repl-repl/login options] (or timeout default-server-timeout)
                    (fn [reply]
                      (if (and (sente/cb-success? reply) (= reply :login-ok))
                        (re-frame/dispatch [::logged-in-user (:user options)])
@@ -213,7 +216,7 @@
 (reg-fx
   ::server-logout
   (fn [{:keys [options timeout]}]
-    (ws/chsk-send! [:reptile/logout options] (or timeout default-server-timeout))))
+    (ws/chsk-send! [:repl-repl/logout options] (or timeout default-server-timeout))))
 
 (reg-event-fx
   ::logout
@@ -304,11 +307,11 @@
 (reg-fx
   ::sync-current-form
   (fn [[{:keys [form name timeout]} team-name prefixed-form to-complete]]
-    (ws/chsk-send! [:reptile/keystrokes {:form          form
-                                         :prefixed-form prefixed-form
-                                         :to-complete   to-complete
-                                         :team-name     team-name
-                                         :user-name     name}]
+    (ws/chsk-send! [:repl-repl/keystrokes {:form          form
+                                           :prefixed-form prefixed-form
+                                           :to-complete   to-complete
+                                           :team-name     team-name
+                                           :user-name     name}]
                    (or timeout 3000))))
 
 (defn change->data
@@ -543,20 +546,25 @@
 ; list is maintained on the client when users are newly logged in or logged out.
 ; Each repl-editor has a network-user-id provided by the server for each connection
 ;; repl-editors is a collection of the team members with the keys
-;; reptile.server.team/user-name
-;; reptile.server.team/uid
+;; user-specs/name
+;; user-specs/uid
 
-;; TODO Eesh - need a common user spec now!! Who knew??
+
+;; TODO determine local vs remote editor list
 
 (reg-event-db
   ::repl-editors
   (fn [db [_ repl-editors]]
-    (println ::repl-editors repl-editors)
-    (let [repl-editor-names    (map :reptile.server.team/user-name repl-editors)
-          local-user           (:user db)
+    (let [repl-editor-names (map ::repl-user/name repl-editors)
+          local-user (:user db)
           network-repl-editors (filter #(not= local-user %) repl-editor-names)
-          updated-editors      (update-editor-defaults local-user repl-editor-names)]
-      (println ::repl-editors :updated-editors updated-editors)
+          updated-editors (update-editor-defaults local-user repl-editor-names)]
+      (println ::repl-editors
+               :red repl-editors
+               :ren repl-editor-names
+               :lou local-user
+               :nre network-repl-editors
+               :ued updated-editors)
 
       ;; TODO put some specs together for the editors
 
