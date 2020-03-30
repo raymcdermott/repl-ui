@@ -5,10 +5,8 @@
     [taoensso.timbre :refer [tracef debugf infof warnf errorf]]
     [taoensso.sente :as sente :refer [cb-success?]]
     [taoensso.sente.packers.transit :as sente-transit]
-    ;    [cljs.core.async]
     [re-frame.core :as re-frame]
-    [repl.repl.ziggy.config :as config]
-    [taoensso.timbre :as timbre]))
+    [repl.repl.ziggy.config :as config]))
 
 ; --- WS client ---
 (declare chsk ch-chsk chsk-send! chsk-state)

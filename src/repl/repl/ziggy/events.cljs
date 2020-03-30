@@ -102,15 +102,16 @@
 (reg-event-fx
   ::eval-result
   (fn [{:keys [db]} [_ eval-result]]
-    (let [code-mirror  (:eval-code-mirror db)
-          show-times?  (true? (:show-times db))
+    (println ::eval-result eval-result)
+    (let [code-mirror (:eval-code-mirror db)
+          show-times? (true? (:show-times db))
           eval-results (conj (:eval-results db) eval-result)
-          history      (let [evals (->> eval-results (map :form) distinct)]
-                         (map (fn [h n]
-                                {:index n :history h})
-                              (reverse evals) (range)))
-          str-results  (apply str (reverse
-                                    (format-results show-times? eval-results)))]
+          history (let [evals (->> eval-results (map :form) distinct)]
+                    (map (fn [h n]
+                           {:index n :history h})
+                         (reverse evals) (range)))
+          str-results (apply str (reverse
+                                   (format-results show-times? eval-results)))]
       {:db                                 (assoc db :eval-results eval-results
                                                      :history history)
        ::code-mirror/set-code-mirror-value {:value       str-results
@@ -142,7 +143,7 @@
   ::send-repl-eval
   (fn [[source team-name form]]
     (when-not (string/blank? form)
-      (ws/chsk-send! [:repl-repl/repl {:form      form
+      (ws/chsk-send! [:repl-repl/eval {:form      form
                                        :team-name team-name
                                        :source    source
                                        :forms     form}]
@@ -195,6 +196,7 @@
 (reg-fx
   ::server-login
   (fn [{:keys [options timeout]}]
+    (println ::server-login :options options)
     (let [user (user/->user (:username options)
                             (:network-user-id options))]
       (ws/chsk-send! [:repl-repl/login user] (or timeout default-server-timeout)
