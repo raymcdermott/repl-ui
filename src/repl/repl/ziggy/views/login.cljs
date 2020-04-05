@@ -5,7 +5,8 @@
     [re-com.core :refer [h-box v-box button gap border label input-text
                          modal-panel title radio-button]]
     [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.subs :as subs]))
+    [repl.repl.ziggy.subs :as subs]
+    [repl.repl.user :as user]))
 
 ;; TODO Routing man, come on...
 
@@ -28,7 +29,7 @@
                :width "100%"
                :model (:user @form-data)
                :placeholder "Your name"
-               :on-change #(swap! form-data assoc :user %)]
+               :on-change #(swap! form-data assoc ::user/name %)]
               [title :label "Team name:" :level :level3]
               [input-text
                :width "100%"
@@ -50,18 +51,16 @@
                        :width "75px" :height "75px"
                        :src   "/images/repl-logo-yellow-transparent.png"}]]]]]]]])
 
+;; TODO - fix for Team Server approach
 (defn authenticate
   []
-  (let [logged-in (re-frame/subscribe [::subs/logged-in])
-        team-data (re-frame/subscribe [::subs/team-data])]
+  (let [logged-in (re-frame/subscribe [::subs/logged-in])]
     (fn []
       (when-not @logged-in
-        (let [{:keys [team-name team-secret]} @team-data
-              user       ()
-              form-data  (reagent/atom {:username  "ray"
-                                        :team-name "team-name"
+        (let [form-data  (reagent/atom {:team-name "team-name"
                                         :secret    "team-secret"})
-              process-ok (fn [] (re-frame/dispatch [::events/login @form-data]))]
+              process-ok (fn [] (re-frame/dispatch
+                                  [::events/login @form-data]))]
           [modal-panel
            :backdrop-color "lightblue"
            :backdrop-opacity 0.1

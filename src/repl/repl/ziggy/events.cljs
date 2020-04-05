@@ -1,16 +1,15 @@
 (ns repl.repl.ziggy.events
   (:require
-    goog.date.Date
     [cljs.tools.reader.edn :as rdr]
     [clojure.core.async]
     [clojure.string :as string]
     [re-frame.core :as re-frame :refer [reg-event-db reg-event-fx reg-fx]]
-    [taoensso.sente :as sente]
     [repl.repl.ziggy.code-mirror :as code-mirror]
     [repl.repl.ziggy.db :as db]
     [repl.repl.ziggy.helpers :refer [js->cljs]]
     [repl.repl.ziggy.ws :as ws]
-    [repl.repl.user :as user]))
+    [repl.repl.user :as user]
+    [taoensso.sente :as sente]))
 
 (def default-server-timeout 3000)
 
@@ -26,9 +25,12 @@
     (assoc db :network-status status)))
 
 (reg-event-db
-  ::network-user-id
-  (fn [db [_ network-user-id]]
-    (assoc db :network-user-id network-user-id)))
+  ::client-uid
+  (fn [db [_ uid]]
+    (if-let [{::user/keys [name]} (::user/user db)]
+      (do (println "Reconnecting existing user uid")
+          (assoc db ::user/user (user/->user name uid)))
+      (assoc db ::user/uid uid))))
 
 (defn pred-fails
   [problems]
@@ -41,6 +43,7 @@
   [tag val]
   {:nk-tag tag :nk-val (rdr/read-string (str val))})
 
+;; TODO deal with ex-data / Throwable->map
 (defn read-exception
   [val]
   (try
@@ -50,7 +53,7 @@
 
 (def bugs "🐛 🐞 🐜\n")
 
-;; TODO integrate a nice spec formatting library after 1.10 is GA
+;; TODO integrate a nice spec formatting library
 (defn check-exception
   [val]
   (let [{:keys [cause via trace data phase] :as exc} (read-exception val)
@@ -96,31 +99,21 @@
   ::clear-evals
   (fn [{:keys [db]} [_ _]]
     (when-let [code-mirror (:eval-code-mirror db)]
-      {:db                                 (assoc db :eval-results [])
-       ::code-mirror/set-code-mirror-value {:value       ""
-                                            :code-mirror code-mirror}})))
+      {:db                        (assoc db :eval-results [])
+       ::code-mirror/set-cm-value {:value       ""
+                                   :code-mirror code-mirror}})))
 (reg-event-fx
   ::eval-result
   (fn [{:keys [db]} [_ eval-result]]
     (println ::eval-result eval-result)
-    (let [code-mirror (:eval-code-mirror db)
-          show-times? (true? (:show-times db))
+    (let [code-mirror  (:eval-code-mirror db)
+          show-times?  (true? (:show-times db))
           eval-results (conj (:eval-results db) eval-result)
-          history (let [evals (->> eval-results (map :form) distinct)]
-                    (map (fn [h n]
-                           {:index n :history h})
-                         (reverse evals) (range)))
-          str-results (apply str (reverse
-                                   (format-results show-times? eval-results)))]
-      {:db                                 (assoc db :eval-results eval-results
-                                                     :history history)
-       ::code-mirror/set-code-mirror-value {:value       str-results
-                                            :code-mirror code-mirror}})))
-
-(reg-event-db
-  ::history-item
-  (fn [db [_ index]]
-    (assoc db :history-item index)))
+          str-results  (apply str (reverse
+                                    (format-results show-times? eval-results)))]
+      {:db                        (assoc db :eval-results eval-results)
+       ::code-mirror/set-cm-value {:value       str-results
+                                   :code-mirror code-mirror}})))
 
 (reg-event-fx
   ::show-times
@@ -128,11 +121,10 @@
     (let [code-mirror  (:eval-code-mirror db)
           show-times?  (true? show-times)
           eval-results (:eval-results db)
-          str-results  (apply str (reverse
-                                    (format-results show-times? eval-results)))]
-      {:db                                 (assoc db :show-times show-times)
-       ::code-mirror/set-code-mirror-value {:value       str-results
-                                            :code-mirror code-mirror}})))
+          str-results  (apply str (reverse (format-results show-times? eval-results)))]
+      {:db                        (assoc db :show-times show-times)
+       ::code-mirror/set-cm-value {:value       str-results
+                                   :code-mirror code-mirror}})))
 
 (reg-event-db
   ::eval-code-mirror
@@ -140,108 +132,66 @@
     (assoc db :eval-code-mirror code-mirror)))
 
 (reg-fx
-  ::send-repl-eval
-  (fn [[source team-name form]]
+  ::>repl-eval
+  (fn [[source user form]]
     (when-not (string/blank? form)
-      (ws/chsk-send! [:repl-repl/eval {:form      form
-                                       :team-name team-name
-                                       :source    source
-                                       :forms     form}]
-                     (or (:timeout form) default-server-timeout)))))
+      (ws/chsk-send!
+        [:repl-repl/eval {:form      form
+                          :team-name "team-name"
+                          :source    source
+                          :user      user
+                          :forms     form}]
+        (or (:timeout form) default-server-timeout)))))
 
 (reg-event-fx
   ::eval
   (fn [{:keys [db]} [_ input]]
-    (let [team-name    (get-in db [:team-data :team-name])
+    (let [user         (::user/user db)
           form-to-eval (if (string? input) input (:form input))]
-      {:db              (assoc db :form-to-eval form-to-eval)
-       ::send-repl-eval [:user team-name form-to-eval]})))
-
-#_(reg-fx
-    ::get-team-data
-    (fn [uuid]
-      (ws/chsk-send! [:repl-repl/team-random-data uuid]
-                     default-server-timeout
-                     (fn [reply]
-                       (if (and (sente/cb-success? reply))
-                         (re-frame/dispatch [::team-data reply])
-                         (js/alert "Cannot start the team"))))))
-
-#_(reg-event-fx
-    ::team-bootstrap
-    (fn [{:keys [db]}]
-      (let [now   (->> (.now js/Date)
-                       str
-                       (drop 2)
-                       distinct
-                       shuffle
-                       (map str)
-                       (apply str))
-            uuid  (random-uuid)
-            token (apply str (interleave now (str uuid)))]
-        {:db             (assoc db :team-defined false)
-         ::get-team-data [token]})))
-
-(reg-event-db
-  ::team-data
-  (fn [db [_ team-data]]
-    (println :team-data team-data)
-    (assoc db :team-data team-data)))
-
-(reg-event-db
-  ::show-team-data
-  (fn [db [_ show-team-data]]
-    (assoc db :show-team-data show-team-data)))
+      {:db          (assoc db :form-to-eval form-to-eval)
+       ::>repl-eval [:user user form-to-eval]})))
 
 (reg-fx
-  ::server-login
+  ::>login
   (fn [{:keys [options timeout]}]
-    (println ::server-login :options options)
-    (let [user (user/->user (:username options)
-                            (:network-user-id options))]
-      (ws/chsk-send! [:repl-repl/login user] (or timeout default-server-timeout)
-                     (fn [reply]
-                       (if (and (sente/cb-success? reply) (= reply :login-ok))
-                         (re-frame/dispatch [::logged-in-user (:username options)])
-                         (js/alert "Login failed")))))))
+    (let [user (user/->user (::user/name options)
+                            (::user/uid options))]
+      (ws/chsk-send!
+        [:repl-repl/login user]
+        (or timeout default-server-timeout)
+        (fn [reply]
+          (if (and (sente/cb-success? reply)
+                   (= reply :login-ok))
+            (re-frame/dispatch [::logged-in-user user])
+            (js/alert "Login failed")))))))
 
 (reg-event-fx
   ::login
   (fn [{:keys [db]} [_ login-options]]
-    (let [network-user-id (:network-user-id db)]
-      {:db            (assoc db :proposed-user (:user login-options)
-                                :observer (:observer login-options)
-                                :user-name nil)
-       ::server-login {:options (assoc login-options
-                                  :network-user-id network-user-id)}})))
+    (when-let [uid (::user/uid db)]
+      {:db      (assoc db
+                  :proposed-user (::user/name login-options)
+                  ::user/name nil)
+       ::>login {:options
+                 (assoc login-options ::user/uid uid)}})))
 
 (reg-fx
-  ::server-logout
+  ::>logout
   (fn [{:keys [options timeout]}]
-    (ws/chsk-send! [:repl-repl/logout options] (or timeout default-server-timeout))))
+    (ws/chsk-send! [:repl-repl/logout options]
+                   (or timeout default-server-timeout))))
 
 (reg-event-fx
   ::logout
   (fn [{:keys [db]} _]
-    {:db             (dissoc db :local-repl-editor :user)
-     ::server-logout {:options (:name (:local-repl-editor db))}}))
+    (when-let [user (::user/user db)]
+      {:db       (dissoc db ::user/user)
+       ::>logout {:options user}})))
 
 (reg-event-db
   ::show-add-lib-panel
   (fn [db [_ show?]]
     (assoc db :show-add-lib-panel show?)))
-
-(reg-event-db
-  ::show-doc-panel
-  (fn [db [_ show?]]
-    ;(prn ::show-doc-panel show? tag)
-    (assoc db :doc-show? show?)))
-
-(reg-event-db
-  ::doc-text
-  (fn [db [_ text]]
-    ;(prn ::doc-text text)
-    (assoc db :doc-text text)))
 
 (reg-event-fx
   ::add-lib
@@ -249,323 +199,70 @@
     (let [use-ns   "(use 'clojure.tools.deps.alpha.repl)"
           lib-spec (str "(add-lib '" (string/trim name) " {"
                         (if maven
-                          (str ":mvn/version \"" (string/trim version) "\"")
-                          (str ":git/url \"" (string/trim url) "\" :sha \"" (string/trim sha) "\""))
+                          (str ":mvn/version \""
+                               (string/trim version) "\"")
+                          (str ":git/url \""
+                               (string/trim url) "\" :sha \""
+                               (string/trim sha) "\""))
                         "})")]
-      {:db              (assoc (:db cofx) :proposed-lib lib)
-       ::send-repl-eval [:system (str use-ns "\n" lib-spec)]})))
-
-
-;; ------------------------------------------------------------------
+      {:db          (assoc (:db cofx) :proposed-lib lib)
+       ::>repl-eval [:system (str use-ns "\n" lib-spec)]})))
 
 ;; ---------------------- Network sync
 
-(defn changed-part-of-line
-  "Returns the substring up to the char that is changed
-  on the changed line from within `form`"
-  [form {:keys [to-line to-ch] :as change-data}]
-  (-> form
-      string/split-lines
-      (nth to-line)
-      (subs 0 (inc to-ch))))
-
-(defn completion-token
-  "Given the form and change-data, find the token that is the target for completion"
-  [form {:keys [text to-ch] :as change-data}]
-  (when (re-find #"\w+" (apply str text))                   ; text may include spaces
-    (let [token     (->> change-data
-                         (changed-part-of-line form)
-                         clojure.string/reverse             ; reverse the line
-                         (re-find #"\w+")                   ; look backwards for the word
-                         clojure.string/reverse)            ; set everything back to normal
-          token-len (count token)]
-      (assoc change-data :token token
-                         :token-len token-len
-                         :token-start (- (inc to-ch) token-len)))))
-
-(defn prefixed-form
-  [form {:keys [to-line token token-start] :as change-data}]
-  (let [form-lines    (string/split-lines form)
-        line-to-edit  (nth form-lines to-line)
-        prefix-line   (str (subs line-to-edit 0 token-start)
-                           (-> line-to-edit
-                               (subs token-start)
-                               (string/replace-first token "__prefix__")))
-        prefixed-form (->> (conj (drop (inc to-line) form-lines)
-                                 prefix-line
-                                 (take to-line form-lines))
-                           flatten
-                           (interpose "\n")
-                           string/join)]
-    (assoc change-data :prefixed-form prefixed-form)))
-
-(defn mark-completion-prefix
-  [current-form change-data]
-  (->> change-data
-       (completion-token current-form)
-       (prefixed-form current-form)))
-
 ;; Text
 (reg-fx
-  ::sync-current-form
-  (fn [[{:keys [form name timeout]} team-name prefixed-form to-complete]]
-    (ws/chsk-send! [:reptile/keystrokes {:form          form
-                                         :prefixed-form prefixed-form
-                                         :to-complete   to-complete
-                                         :team-name     team-name
-                                         :user-name     name}]
-                   (or timeout 3000))))
-
-(defn change->data
-  [{:keys [from to origin] :as change-data}]
-  (assoc change-data :from-line (.-line from)
-                     :from-ch (.-ch from)
-                     :to-line (.-line to)
-                     :to-ch (.-ch to)
-                     :source (if (= origin "+input") :user :api)))
+  ::>current-form
+  (fn [[user other-users current-form]]
+    (when other-users
+      (ws/chsk-send!
+        [:reptile/keystrokes {:form current-form
+                              :user user}]))))
 
 (reg-event-fx
   ::current-form
-  (fn [{:keys [db]} [_ current-form change-object]]
+  (fn [{:keys [db]} [_ current-form]]
     (when-not (string/blank? (string/trim current-form))
-      (let [team-name           (get-in db [:team-data :team-name])
-            local-repl-editor   (:local-repl-editor db)
-            change-data         (change->data (js->cljs change-object))
-            {:keys [token prefixed-form]} (mark-completion-prefix current-form change-data)
-            updated-repl-editor (assoc local-repl-editor :form current-form)]
-        {:db                 (assoc db :local-repl-editor updated-repl-editor
-                                       :current-form current-form
-                                       :change-data change-data
-                                       :to-complete token)
-         ::sync-current-form [updated-repl-editor team-name prefixed-form token]}))))
-
-;; favour code-mirror hints
-(reg-event-db
-  ::current-word
-  (fn [db [_ change-data]]
-
-    ;; TODO - work out the completions
-
-    ;; conj the texts until non [a-z-]
-    ;; check for completions on each keystroke
-    ;; something like
-    ;; (def core-ns (map first (ns-publics 'clojure.core)))
-    ;; (sort (filter #(clojure.string/starts-with? % "re-") core-ns))
-    ;; set completions on the db
-    ;; unset completions when not core letter
-
-    ;; The server should include current ns defs on each call
-    ;; a bit wasteful but there are rarely going to be > 10
-    ;; and we can optimise down the line
-
-    ;; any newly included namespaces should be tracked for inclusion
-    ;; in the list. This could make the payload bigger so maybe we do maintain
-    ;; another atom / transmission route
-
-    ;; then combine defs from the user ns with the clojure.core
-
-    (assoc db :current-word change-data)
-
-    )
-
-  )
+      (let [user        (::user/user db)
+            other-users (user/other-users (::user/name user)
+                                          (::user/users db))]
+        {:db             (assoc db :current-form current-form)
+         ::>current-form [user other-users current-form]}))))
 
 ;; ------------------------------------------------------------------
 
-; {:your-name {:client-id 481d984d-fdb6-4ce9-a367-77ce5b5068f1, :observer false}}
-
-;; ---------------------- Logged in editor
 (reg-event-db
   ::logged-in-user
-  (fn [db [_ user-name]]
-    (println ::logged-in-user user-name)
-    (assoc db :user user-name :local-repl-editor {:name user-name})))
+  (fn [db [_ user]]
+    (assoc db ::user/user user)))
 
 (reg-event-db
-  ::repl-editor-code-mirror
+  ::users
+  (fn [db [_ users]]
+    (assoc db ::user/users users)))
+
+(reg-event-db
+  ::code-mirror
   (fn [db [_ code-mirror]]
-    (let [local-repl-editor   (:local-repl-editor db)
-          updated-repl-editor (assoc local-repl-editor :code-mirror code-mirror)]
-      (assoc db :local-repl-editor updated-repl-editor))))
-
-(reg-event-fx
-  ::from-history
-  (fn [{:keys [db]} [_ index]]
-    (let [local-repl-editor   (:local-repl-editor db)
-          history             (:history db)
-          history-item        (nth history index)
-          history-form        (:history history-item)
-          updated-repl-editor (assoc local-repl-editor :form history-form)]
-      {:db                            (assoc db :local-repl-editor updated-repl-editor
-                                                :current-form history-form
-                                                :history-item history-item)
-       ::code-mirror/sync-code-mirror updated-repl-editor})))
-
-;; ---------------------- Logged in network user
-(reg-event-db
-  ::network-user
-  (fn [db [_ user-name]]
-    (assoc db :network-repl-editors (merge (:network-repl-editors db)
-                                           {(keyword user-name)
-                                            {:name user-name :editor true}}))))
-
-;; ---------------------- Editor visibility
-(defn toggle-visibility
-  [editor-key editor-properties]
-  (let [visibility (false? (:visibility editor-properties))]
-    {editor-key (assoc editor-properties :visibility visibility)}))
-
-#_(defn check-active
-    [editor inactivity-ms since]
-    (let [inactivity-period (- since (:last-active editor))]
-      (if (> inactivity-ms inactivity-period)
-        (assoc editor :active true)
-        (assoc editor :active false))))
-
-#_(reg-event-db
-    ::idle-check
-    (fn [db [_ editor]]
-      ; TODO - fix up to use network users, pass in ID and dissoc that from the list
-      (let [inactivity-ms (:inactivity-ms db)
-            editors       (:annotated-editors db)
-            check-list    (filter #(not (= (:name %) editor)) editors)
-            now           (js/Date.now)]
-        (assoc db :annotated-editors (map #(check-active % inactivity-ms now) check-list)))))
-
-(reg-event-fx
-  ::network-user-visibility-toggle
-  (fn [{:keys [db]} [_ editor-key]]
-    (let [network-repl-editors (:network-repl-editors db)
-          network-repl-editor  (get network-repl-editors editor-key)
-          updated-repl-editor  (toggle-visibility editor-key network-repl-editor)
-          network-repl-editors (merge network-repl-editors updated-repl-editor)]
-      {:db                            (assoc db :network-repl-editors network-repl-editors)
-       ::code-mirror/sync-code-mirror (get network-repl-editors editor-key)})))
-
-;; Obtain an updated form from a network user
-(reg-event-fx
-  ::network-repl-editor-form-update
-  (fn [{:keys [db]} [_ {:keys [user form completions]}]]
-    (if (= user (:user db))
-      (let [editor           (:local-repl-editor db)
-            with-completions (assoc editor :completions completions
-                                           :change-data (:change-data db)
-                                           :to-complete (:to-complete db))]
-        ;(println ::network-repl-editor-form-update (:change-data db))
-        {:db                         (assoc db :local-repl-editor with-completions)
-         ::code-mirror/auto-complete with-completions})
-      (let [editor-key           (keyword user)
-            network-repl-editors (:network-repl-editors db)
-            network-repl-editor  (get network-repl-editors editor-key)
-            updated-repl-editor  (assoc network-repl-editor :active true
-                                                            :last-active (js/Date.now)
-                                                            :form form)
-            ;_                    (println :pre network-repl-editors)
-            network-repl-editors (merge network-repl-editors
-                                        {editor-key updated-repl-editor})]
-        ;(println :post network-repl-editors)
-        {:db                            (assoc db :network-repl-editors network-repl-editors)
-         ::code-mirror/sync-code-mirror updated-repl-editor}))))
+    (assoc db :code-mirror code-mirror)))
 
 (reg-event-db
-  ::network-repl-editor-code-mirror
-  (fn [db [_ code-mirror editor-key]]
-    (let [network-repl-editors (:network-repl-editors db)
-          network-repl-editor  (get network-repl-editors editor-key)
-          updated-repl-editor  (assoc network-repl-editor :code-mirror code-mirror)
-          network-repl-editors (merge network-repl-editors
-                                      {editor-key updated-repl-editor})]
-      (assoc db :network-repl-editors network-repl-editors))))
+  ::other-user-code-mirror
+  (fn [db [_ code-mirror user]]
+    (let [user-key         (keyword (::user/name user))
+          user-code-mirror (assoc {} user-key code-mirror)]
+      (assoc db :other-user-code-mirrors
+                (merge (:other-user-code-mirrors db)
+                       user-code-mirror)))))
 
+(reg-event-fx
+  ::other-user-keystrokes
+  (fn [{:keys [db]} [_ {:keys [user form]}]]
+    (when-not (= user (::user/user db))
+      (let [editor-key   (keyword (::user/name user))
+            code-mirrors (:other-user-code-mirrors db)
+            code-mirror  (get code-mirrors editor-key)]
+        {:db                        db
+         ::code-mirror/set-cm-value [code-mirror form]}))))
 
-;; ------------------------------------------------------------------
-
-;; ---------------------- Editor default data
-
-(defn styled-editor
-  [editor color icon]
-  (println ::styled-editor editor)
-  (let [editor-key        (first (first editor))
-        editor-name       (name editor-key)
-        editor-properties (second (first editor))
-        styled-properties (merge editor-properties
-                                 {:abbr  (subs editor-name 0
-                                               (min (count editor-name) 2))
-                                  :style {:color color}
-                                  :icon  icon})]
-    {editor-key styled-properties}))
-
-(defn editor-property-update
-  [repl-editor-name editor]
-  (println :epu :ren repl-editor-name :e editor)
-  (let [default-editor {:name                editor
-                        :local-repl-editor   (= repl-editor-name editor)
-                        :network-repl-editor (false? (= repl-editor-name editor))
-                        :visibility          true}]
-    {(keyword editor) default-editor}))
-
-(defn editor-icons
-  ([] (editor-icons :random false))
-  ([& {:keys [random]}]
-   (let [data    ["mood" "mood-bad" "run" "walk" "face" "male-female" "lamp" "cutlery"
-                  "flower" "flower-alt" "coffee" "cake" "attachment" "attachment-alt"
-                  "fire" "nature" "puzzle-piece" "drink" "truck" "car-wash" "bug"]
-         sort-fn (if random (partial shuffle) (partial sort))]
-     (sort-fn (map (partial str "zmdi-") data)))))
-
-(defn colour-palette
-  ([] (colour-palette :random false))
-  ([& {:keys [random]}]
-   (let [data    ["silver" "gray" "black" "red" "maroon" "olive" "lime"
-                  "green" "aqua" "teal" "blue" "navy" "fuchsia" "purple"]
-         sort-fn (if random (partial shuffle) (partial sort))]
-     (sort-fn data))))
-
-; TODO - maintain a uniform ordering as editors are added and ensure variety of styling
-;; TODO ... bin this seems like a drunken idea - defaults should be set per editor
-
-(defn update-editor-defaults
-  "Set various defaults for any new editors, leave existing editors untouched"
-  [repl-editor-name editors]
-  (println :ued :ren repl-editor-name :es editors)
-
-  ;; TODO - BUG editors must be a list
-  (let [new-users          (filter (comp nil? :icon last) editors)
-        _                  (println :ued :nu new-users)
-        property-update-fn (partial editor-property-update repl-editor-name)
-        updated-editors    (map property-update-fn new-users)
-        _                  (println :ued :ue updated-editors)
-        icons              (editor-icons :random true)
-        colours            (colour-palette :random true)
-        styled-editors     (into {} (sort-by (comp :name last)
-                                             (map #(styled-editor %1 %2 %3)
-                                                  updated-editors colours icons)))]
-    (println :ued :se styled-editors)
-    styled-editors))
-
-
-;; TODO 🐛 new team editors not being received properly
-; repl-editors is supplied by the server. These transformations ensure that the same
-; list is maintained on the client when users are newly logged in or logged out.
-; Each repl-editor has a network-user-id provided by the server for each connection
-;; repl-editors is a collection of the team members with the keys
-;; reptile.server.team/user-name
-;; reptile.server.team/uid
-
-;; TODO Eesh - need a common user spec now!! Who knew??
-
-(reg-event-db
-  ::repl-editors
-  (fn [db [_ repl-editors]]
-    (println ::repl-editors repl-editors)
-    (let [repl-editor-names    (map :reptile.server.team/user-name repl-editors)
-          local-user           (:user db)
-          network-repl-editors (filter #(not= local-user %) repl-editor-names)
-          updated-editors      (update-editor-defaults local-user repl-editor-names)]
-      (println ::repl-editors :updated-editors updated-editors)
-
-      ;; TODO put some specs together for the editors
-
-      (assoc db :local-repl-editor local-user
-                :network-repl-editors updated-editors))))
 

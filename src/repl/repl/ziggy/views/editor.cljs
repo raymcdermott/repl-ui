@@ -13,7 +13,8 @@
     [repl.repl.ziggy.views.add-lib :as add-lib]
     [repl.repl.ziggy.views.show-team-data :as team]
     [repl.repl.ziggy.views.eval :as eval-view]
-    [repl.repl.ziggy.views.status :as status]))
+    [repl.repl.ziggy.views.status :as status]
+    [repl.repl.user :as user]))
 
 (defonce default-style {:font-family   "Menlo, Lucida Console, Monaco, monospace"
                         :border-radius "8px"
@@ -60,7 +61,7 @@
       (.on code-mirror "change" (fn [cm co]
                                   (notify-edits (.getValue cm) co)))
 
-      (dispatch [::events/repl-editor-code-mirror code-mirror]))))
+      (dispatch [::events/code-mirror code-mirror]))))
 
 (defn edit-component
   [panel-name]
@@ -97,11 +98,11 @@
    :label ""])
 
 (defn edit-panel
-  [local-repl-editor]
+  [user]
   (let [current-form (subscribe [::subs/current-form])
         history-item (subscribe [::subs/history-item])]
     (fn []
-      (let [editor-name (:name local-repl-editor)]
+      (let [editor-name (::user/name user)]
         [v-box :size "auto"
          :children
          [[h-box :width "auto"
@@ -123,33 +124,28 @@
              :tooltip "Send the form(s) for evaluation"
              :class "btn-success"
              :on-click #(dispatch [::events/eval @current-form])]
-            [gap :size "5px"]
-            ;; Only show if completions available
-            (when (= 1 0)
-              [box :size "auto" :style edit-panel-style
-               :child [completions-component]])]]]]))))
+            [gap :size "5px"]]]]]))))
 
 (defn editors-panel
-  [local-repl-editor network-repl-editors]
-  (let [visible-count (some->> network-repl-editors
-                               (filter (fn [[_ val]] (:visibility val)))
-                               count)]
+  [user other-users]
+  (let [visible-count (count other-users)]
+    (println ::editors-panel :visible-count visible-count :other-users other-users)
     [v-box :gap "5px" :size "auto"
      :children
      [(when (and visible-count (> visible-count 0))
-        [other-editor/other-panels network-repl-editors])
-      [edit-panel local-repl-editor (count network-repl-editors)]]]))
+        [other-editor/other-panels other-users])
+      [edit-panel user]]]))
 
 (defn other-editor-row
-  [network-repl-editors]
-  [h-box :size "auto" :align :center
-   :children
-   (vec (map other-editor/min-panel network-repl-editors))])
+  [users]
+  (when (seq? users)
+    [h-box :size "auto" :align :center
+     :children
+     (vec (map other-editor/min-panel users))]))
 
 (defn main-panels
-  [user-name]
-  (let [network-repl-editors (subscribe [::subs/network-repl-editors])
-        local-repl-editor    (subscribe [::subs/local-repl-editor])]
+  [user]
+  (let [users (subscribe [::subs/other-users])]
     (fn []
       [v-box :style {:position "absolute"
                      :top      "0px"
@@ -160,35 +156,36 @@
          :children
          [[box :align :center :justify :start
            :child
-           [button :label "⏏️ Logout" :class "btn-default btn-sm"
+           [button :label "👋🏽" :class "btn-default btn-sm"
             :tooltip "Logout of the system"
             :on-click #(dispatch [::events/logout])]]
           [gap :size "10px"]
           [box :align :center :justify :start
            :child
-           [:img {:alt   "repl"
+           [:img {:alt   "repl-repl ♻️"
                   :width "40px" :height "40px"
                   :src   "/images/repl-logo-gray-transparent.png"}]]
           [gap :size "10px"]
           [h-box :align :center
            :children
            [[add-lib/add-lib-panel]
-            [button :label "🛠 Add Library" :class "btn-default btn-sm"
+            [button :label "✚ ⚗️" :class "btn-default btn-sm"
              :tooltip "Dynamically add a dependency"
              :on-click #(dispatch [::events/show-add-lib-panel true])]]]
           [gap :size "10px"]
           [h-box :align :center
            :children
            [[team/team-data-panel]
-            [button :label "👥 Team Data" :class "btn-default btn-sm"
-             :tooltip "Obtain team to data for others to join"
+            [button :label "✚ 👥" :class "btn-default btn-sm"
+             :tooltip "Get a link to invite others to the REPL session"
              :on-click #(dispatch [::events/show-team-data true])]]]
           [gap :size "50px"]
           [h-box :align :center
-           :children [[other-editor-row @network-repl-editors]]]]]
+           :children [[other-editor-row @users]]]]]
+        ;; TODO fix
         [h-split :splitter-size "3px"
-         :panel-1 [editors-panel @local-repl-editor @network-repl-editors]
+         :panel-1 [editors-panel user @users]
          :panel-2 [v-box :style eval-panel-style
-                   :children [[eval-view/eval-panel user-name]]]]
+                   :children [[eval-view/eval-panel user]]]]
         [gap :size "10px"]
-        [status/status-bar user-name]]])))
+        [status/status-bar user]]])))

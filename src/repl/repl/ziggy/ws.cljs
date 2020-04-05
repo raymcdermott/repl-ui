@@ -11,8 +11,8 @@
 ; --- WS client ---
 (declare chsk ch-chsk chsk-send! chsk-state)
 
-(defmulti -event-msg-handler "Multimethod to handle Sente `event-msg`s"
-          ; Dispatch on event-id
+(defmulti -event-msg-handler
+          "Dispatch on :id from Sente `event-msg`s"
           :id)
 
 (defn event-msg-handler
@@ -20,16 +20,19 @@
   [{:as ev-msg :keys [id ?data event]}]
   (-event-msg-handler ev-msg))
 
-(defmethod -event-msg-handler
-  :default                                                  ; Default/fallback case (no other matching handler)
+(defmethod -event-msg-handler :default
   [{:keys [event]}]
   (println "Unhandled event: %s" event))
 
 (defmethod -event-msg-handler :chsk/state
   [{:keys [?data]}]
   (let [[_ new-state-map] (have vector? ?data)]
-    (re-frame/dispatch [:repl.repl.ziggy.events/network-user-id (:uid new-state-map)])
-    (re-frame/dispatch [:repl.repl.ziggy.events/network-status (:open? new-state-map)])))
+    (re-frame/dispatch
+      [:repl.repl.ziggy.events/client-uid
+       (:uid new-state-map)])
+    (re-frame/dispatch
+      [:repl.repl.ziggy.events/network-status
+       (:open? new-state-map)])))
 
 (defmethod -event-msg-handler :chsk/recv
   [{:keys [?data]}]
@@ -37,13 +40,19 @@
         push-data  (first (rest ?data))]
     (cond
       (= push-event :repl-repl/keystrokes)
-      (re-frame/dispatch [:repl.repl.ziggy.events/network-repl-editor-form-update push-data])
+      (re-frame/dispatch
+        [:repl.repl.ziggy.events/other-user-keystrokes
+         push-data])
 
-      (= push-event :repl-repl/editors)
-      (re-frame/dispatch [:repl.repl.ziggy.events/repl-editors push-data])
+      (= push-event :repl-repl/users)
+      (re-frame/dispatch
+        [:repl.repl.ziggy.events/users
+         push-data])
 
       (= push-event :repl-repl/eval)
-      (re-frame/dispatch [:repl.repl.ziggy.events/eval-result push-data])
+      (re-frame/dispatch
+        [:repl.repl.ziggy.events/eval-result
+         push-data])
 
       (= push-event :chsk/ws-ping)
       :noop                                                 ; do reply
@@ -54,23 +63,28 @@
 ;; The WS connection is established ... get the team name and secret
 (defmethod -event-msg-handler :chsk/handshake
   []
+  ;; TODO add the user in here if we are logged in
   (println ::handshake)
-  (re-frame/dispatch [:repl.repl.ziggy.events/team-bootstrap]))
+  (re-frame/dispatch
+    [:repl.repl.ziggy.events/team-bootstrap]))
 
 (defonce router_ (atom nil))
-(defn stop-router! [] (when-let [stop-f @router_] (stop-f)))
+
+(defn stop-router! []
+  (when-let [stop-f @router_]
+    (stop-f)))
+
 (defn start-router! []
   (stop-router!)
   (reset! router_
           (sente/start-client-chsk-router!
             ch-chsk event-msg-handler)))
 
-(let [;; Serialization format, must use same val for client + server:
-      packer (sente-transit/get-transit-packer)             ; Needs Transit dep
+(let [packer (sente-transit/get-transit-packer)
 
       {:keys [chsk ch-recv send-fn state]}
       (sente/make-channel-socket-client!
-        "/chsk"                                             ; Must match server Ring routing URL
+        "/chsk"
         {:type   :auto
          :host   config/server-host
          :packer packer})]

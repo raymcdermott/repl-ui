@@ -1,6 +1,7 @@
 (ns repl.repl.ziggy.subs
   (:require
-    [re-frame.core :refer [reg-sub]]))
+    [re-frame.core :refer [reg-sub]]
+    [repl.repl.user :as user]))
 
 (reg-sub
   ::user-keystrokes
@@ -48,9 +49,9 @@
     (get-in db [:local-repl-editor :completions])))
 
 (reg-sub
-  ::local-repl-editor
+  ::user
   (fn [db]
-    (:local-repl-editor db)))
+    (::user/user db)))
 
 (reg-sub
   ::logged-in
@@ -58,15 +59,9 @@
     (:logged-in db)))
 
 (reg-sub
-  ::observers
-  (fn [db]
-    (let [editors (:annotated-editors db)]
-      (filter #(= "true" (:observer %)) editors))))
-
-(reg-sub
   ::logged-in-user
   (fn [db]
-    (:user db)))
+    (::user/user db)))
 
 (reg-sub
   ::user-code-mirror
@@ -79,9 +74,10 @@
     (get-in db [:network-repl-editors editor-key])))
 
 (reg-sub
-  ::network-repl-editors
+  ::other-users
   (fn [db]
-    (:network-repl-editors db)))
+    (user/other-users (::user/name (::user/user db))
+                      (::user/users db))))
 
 (reg-sub
   ::network-repl-editor-keys

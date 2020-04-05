@@ -8,19 +8,18 @@
     [repl.repl.ziggy.subs :as subs]
     [repl.repl.ziggy.events :as events]
     [repl.repl.ziggy.code-mirror :as code-mirror]
-    [repl.repl.ziggy.views.eval :as eval-view]))
+    [repl.repl.user :as user]))
 
 (defonce other-editors-style {:padding "20px 20px 20px 10px"})
 
 (defn other-editor-did-mount
-  [editor]
+  [user]
   (fn [this]
     (let [node        (reagent/dom-node this)
           options     {:options {:lineWrapping true
                                  :readOnly     true}}
-          code-mirror (code-mirror/parinfer node options)
-          editor-key  (keyword (:name editor))]
-      (re-frame/dispatch [::events/network-repl-editor-code-mirror code-mirror editor-key]))))
+          code-mirror (code-mirror/parinfer node options)]
+      (re-frame/dispatch [::events/other-user-code-mirror code-mirror user]))))
 
 ;; TODO visibility toggle ... we never get here cos react
 (defn other-component
