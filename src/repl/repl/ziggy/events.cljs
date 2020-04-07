@@ -239,6 +239,7 @@
 (reg-event-db
   ::users
   (fn [db [_ users]]
+    (println ::users users)
     (assoc db ::user/users users)))
 
 (reg-event-db
@@ -247,7 +248,7 @@
     (assoc db :code-mirror code-mirror)))
 
 (reg-event-db
-  ::other-user-code-mirror
+  `::other-user-code-mirror
   (fn [db [_ code-mirror user]]
     (let [user-key         (keyword (::user/name user))
           user-code-mirror (assoc {} user-key code-mirror)]

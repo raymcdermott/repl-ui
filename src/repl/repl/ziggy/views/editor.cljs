@@ -27,14 +27,6 @@
 (defonce edit-style (assoc default-style :border "1px solid lightgrey"))
 (defonce edit-panel-style (merge (flex-child-style "1") edit-style))
 
-(defonce history-button-style (assoc default-style
-                                :padding "0px 0px 0px 0px"
-                                :background-color "lightgrey"
-                                :border "1px solid lightgrey"))
-
-(defonce history-buttons-style (merge (flex-child-style "1")
-                                      history-button-style))
-
 (defonce status-style (merge (dissoc default-style :border)
                              {:font-size   "10px"
                               :font-weight "lighter"
@@ -71,54 +63,17 @@
      :component-did-update #(-> nil)                        ; noop to prevent reload
      :display-name         "local-editor"}))
 
-;; need to coalesce next / previous code ...
-;; way too much duplication
-(defn history-previous-component
-  [history-item]
-  (let [{:keys [index]} history-item]
-    [md-icon-button
-     :tooltip "Previous item from history"
-     :tooltip-position :above-center
-     :md-icon-name "zmdi-chevron-left"
-     :on-click #(dispatch [::events/from-history (dec index)])]))
-
-(defn history-next-component
-  [history-item]
-  (let [{:keys [index]} history-item]
-    [md-icon-button
-     :tooltip "Next item from history"
-     :tooltip-position :above-center
-     :md-icon-name "zmdi-chevron-right"
-     :on-click #(dispatch [::events/from-history (inc index)])]))
-
-(defn completions-component
-  []
-  [label
-   :style {:color "lightgray"}
-   :label ""])
-
 (defn edit-panel
   [user]
-  (let [current-form (subscribe [::subs/current-form])
-        history-item (subscribe [::subs/history-item])]
+  (let [current-form (subscribe [::subs/current-form])]
     (fn []
       (let [editor-name (::user/name user)]
-        [v-box :size "auto"
-         :children
-         [[h-box :width "auto"
-           :children
-           [[box :justify :center
-             :style history-buttons-style
-             :child [history-previous-component @history-item]]
-            [box :justify :center
-             :style history-buttons-style
-             :child [history-next-component @history-item]]]]
-          [box :size "auto"
+        [v-box :size "auto" :children
+         [[box :size "auto"
            :style edit-panel-style
            :child [edit-component editor-name]]
           [gap :size "5px"]
-          [h-box
-           :children
+          [h-box :children
            [[button
              :label "Eval (or Cmd-Enter)"
              :tooltip "Send the form(s) for evaluation"
@@ -129,63 +84,46 @@
 (defn editors-panel
   [user other-users]
   (let [visible-count (count other-users)]
-    (println ::editors-panel :visible-count visible-count :other-users other-users)
     [v-box :gap "5px" :size "auto"
      :children
      [(when (and visible-count (> visible-count 0))
         [other-editor/other-panels other-users])
       [edit-panel user]]]))
 
-(defn other-editor-row
-  [users]
-  (when (seq? users)
-    [h-box :size "auto" :align :center
-     :children
-     (vec (map other-editor/min-panel users))]))
-
 (defn main-panels
   [user]
-  (let [users (subscribe [::subs/other-users])]
+  (let [other-users (subscribe [::subs/other-users])]
     (fn []
       [v-box :style {:position "absolute"
                      :top      "0px"
                      :bottom   "0px"
                      :width    "100%"}
        :children
-       [[h-box :height "20px" :style other-editor/other-editors-style
+       [[h-box :height "20px"
+         :style other-editor/other-editors-style
+         :gap "30px"
          :children
          [[box :align :center :justify :start
            :child
-           [button :label "👋🏽" :class "btn-default btn-sm"
+           [button :label "👋🏽" :class "btn-default btn"
             :tooltip "Logout of the system"
             :on-click #(dispatch [::events/logout])]]
-          [gap :size "10px"]
-          [box :align :center :justify :start
-           :child
-           [:img {:alt   "repl-repl ♻️"
-                  :width "40px" :height "40px"
-                  :src   "/images/repl-logo-gray-transparent.png"}]]
-          [gap :size "10px"]
           [h-box :align :center
            :children
            [[add-lib/add-lib-panel]
-            [button :label "✚ ⚗️" :class "btn-default btn-sm"
+            [button :label "✚ ⚗️" :class "btn-default btn"
              :tooltip "Dynamically add a dependency"
              :on-click #(dispatch [::events/show-add-lib-panel true])]]]
-          [gap :size "10px"]
           [h-box :align :center
            :children
            [[team/team-data-panel]
-            [button :label "✚ 👥" :class "btn-default btn-sm"
+            [button :label "✚ 👥" :class "btn-default btn"
              :tooltip "Get a link to invite others to the REPL session"
              :on-click #(dispatch [::events/show-team-data true])]]]
-          [gap :size "50px"]
-          [h-box :align :center
-           :children [[other-editor-row @users]]]]]
+          [gap :size "50px"]]]
         ;; TODO fix
         [h-split :splitter-size "3px"
-         :panel-1 [editors-panel user @users]
+         :panel-1 [editors-panel user @other-users]
          :panel-2 [v-box :style eval-panel-style
                    :children [[eval-view/eval-panel user]]]]
-        [gap :size "10px"]
         [status/status-bar user]]])))

@@ -23,10 +23,10 @@
 
 ;; TODO visibility toggle ... we never get here cos react
 (defn other-component
-  [network-repl-editor]
-  (let [editor-name (:name network-repl-editor)]
+  [user]
+  (let [editor-name (::user/name user)]
     (reagent/create-class
-      {:component-did-mount  (other-editor-did-mount network-repl-editor)
+      {:component-did-mount  (other-editor-did-mount user)
        :reagent-render       (code-mirror/text-area editor-name)
        :component-did-update #(-> nil)                      ; noop to prevent reload
        :display-name         (str "network-editor-" editor-name)})))
@@ -35,48 +35,20 @@
 ; 2 - use the visible invisible property on each editor icon
 ; 3 - outer component to subscribe on the given editor and check the visibility
 
-(defn editor-activity
-  [editor-key network-repl-editor]
-  [md-icon-button
-   :tooltip "Click to show / hide"
-   :md-icon-name (str "zmdi-eye" (if (:visibility network-repl-editor) "-off"))
-   :size :smaller
-   :style (:style network-repl-editor)
-   :on-click #(re-frame/dispatch [::events/network-user-visibility-toggle editor-key])])
+(defonce other-panel-style
+         (merge (flex-child-style "1")
+                {:font-family   "Menlo, Lucida Console, Monaco, monospace"
+                 :border-radius "8px"
+                 :border        "1px solid lightgrey"
+                 :padding       "5px 5px 5px 5px"}))
 
-(defn editor-icon
-  [editor-key network-repl-editor]
-  (println :editor-icon :editor-key editor-key :network-repl-editor network-repl-editor)
-  [md-icon-button
-   :tooltip (:name network-repl-editor)
-   :md-icon-name (:icon network-repl-editor)
-   :style (:style network-repl-editor)
-   :on-click #(re-frame/dispatch [::events/network-user-visibility-toggle editor-key])])
-
-(defn min-panel
-  [[editor-key network-repl-editor]]
-  (when editor-key
-    [h-box :align :center :justify :center :size "80px"
-     :children
-     [[editor-activity editor-key network-repl-editor]
-      [editor-icon editor-key network-repl-editor]]]))
-
-(defonce other-panel-style (merge (flex-child-style "1")
-                                  {:font-family   "Menlo, Lucida Console, Monaco, monospace"
-                                   :border-radius "8px"
-                                   :border        "1px solid lightgrey"
-                                   :padding       "5px 5px 5px 5px"}))
-
-; TODO: BUG re-display the most recent form when the component is made visible
-; use the inner / outer pattern from re-frame
 (defn network-editor-panel
-  [[editor-key network-repl-editor]]
-  (when (and editor-key (true? (:visibility network-repl-editor)))
-    [box :size "auto" :style other-panel-style
-     :child [other-component network-repl-editor]]))
+  [user]
+  [box :size "auto" :style other-panel-style
+   :child [other-component user]])
 
 (defn other-panels
-  [network-repl-editors]
+  [other-users]
   [v-box :gap "2px" :size "auto"
    :children
-   (vec (map #(network-editor-panel %) network-repl-editors))])
+   (vec (map #(network-editor-panel %) other-users))])
