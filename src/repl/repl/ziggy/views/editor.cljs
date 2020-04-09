@@ -17,14 +17,14 @@
     [repl.repl.user :as user]))
 
 (defonce default-style {:font-family   "Menlo, Lucida Console, Monaco, monospace"
-                        :border-radius "8px"
+                        :border-radius "3px"
                         :border        "1px solid lightgrey"
                         :padding       "5px 5px 5px 5px"})
 
 (defonce eval-panel-style (merge (flex-child-style "1")
                                  default-style))
 
-(defonce edit-style (assoc default-style :border "1px solid lightgrey"))
+(defonce edit-style (assoc default-style :border "2px solid lightgrey"))
 (defonce edit-panel-style (merge (flex-child-style "1") edit-style))
 
 (defonce status-style (merge (dissoc default-style :border)
@@ -81,14 +81,42 @@
              :on-click #(dispatch [::events/eval @current-form])]
             [gap :size "5px"]]]]]))))
 
-(defn editors-panel
-  [user other-users]
+(defn others-panel
+  [other-users]
   (let [visible-count (count other-users)]
-    [v-box :gap "5px" :size "auto"
+    (if (and visible-count (> visible-count 0))
+      [other-editor/other-panels other-users]
+      [other-editor/waiting-panel])))
+
+(defn top-row
+  []
+  [h-box :height "20px"
+   :style other-editor/other-editors-style
+   :justify :between
+   :children
+   [[box :align :center :justify :start
+     :child
+     [button :label "👋🏽" :class "btn-default btn"
+      :tooltip "Logout of the system"
+      :on-click #(dispatch [::events/logout])]]
+    [h-box :align :center
      :children
-     [(when (and visible-count (> visible-count 0))
-        [other-editor/other-panels other-users])
-      [edit-panel user]]]))
+     [[add-lib/add-lib-panel]
+      [button :label "✚ ⚗️" :class "btn-default btn"
+       :tooltip "Dynamically add a dependency"
+       :on-click #(dispatch [::events/show-add-lib-panel true])]]]
+    [h-box :align :center
+     :children
+     [[team/team-data-panel]
+      [button :label "✚ 👥" :class "btn-default btn"
+       :tooltip "Get a link to invite others to the REPL session"
+       :on-click #(dispatch [::events/show-team-data true])]]]
+    [gap :size "50px"]
+    [box :align :center :justify :start
+     :child
+     [button :label "Hide / Show Others" :class "btn-warning btn"
+      :tooltip "Hide / Show live keyboard input from the other editors"
+      :on-click #(dispatch [::events/toggle-others])]]]])
 
 (defn main-panels
   [user]
@@ -99,31 +127,11 @@
                      :bottom   "0px"
                      :width    "100%"}
        :children
-       [[h-box :height "20px"
-         :style other-editor/other-editors-style
-         :gap "30px"
-         :children
-         [[box :align :center :justify :start
-           :child
-           [button :label "👋🏽" :class "btn-default btn"
-            :tooltip "Logout of the system"
-            :on-click #(dispatch [::events/logout])]]
-          [h-box :align :center
-           :children
-           [[add-lib/add-lib-panel]
-            [button :label "✚ ⚗️" :class "btn-default btn"
-             :tooltip "Dynamically add a dependency"
-             :on-click #(dispatch [::events/show-add-lib-panel true])]]]
-          [h-box :align :center
-           :children
-           [[team/team-data-panel]
-            [button :label "✚ 👥" :class "btn-default btn"
-             :tooltip "Get a link to invite others to the REPL session"
-             :on-click #(dispatch [::events/show-team-data true])]]]
-          [gap :size "50px"]]]
-        ;; TODO fix
-        [h-split :splitter-size "3px"
-         :panel-1 [editors-panel user @other-users]
-         :panel-2 [v-box :style eval-panel-style
-                   :children [[eval-view/eval-panel user]]]]
+       [[top-row]
+        [v-split :initial-split 20 :splitter-size "5px"
+         :panel-1 [others-panel @other-users]
+         :panel-2 [h-split :margin "5px" :splitter-size "5px"
+                   :panel-1 [edit-panel user]
+                   :panel-2 [v-box :style eval-panel-style
+                             :children [[eval-view/eval-panel user]]]]]
         [status/status-bar user]]])))

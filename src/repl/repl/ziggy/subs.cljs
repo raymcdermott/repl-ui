@@ -76,8 +76,15 @@
 (reg-sub
   ::other-users
   (fn [db]
-    (user/other-users (::user/name (::user/user db))
-                      (::user/users db))))
+    (when (::user/users db)
+      (user/other-users (::user/name (::user/user db))
+                        (::user/users db)))))
+
+(reg-sub
+  ::other-users-count
+  (fn [db]
+    (count (user/other-users (::user/name (::user/user db))
+                             (::user/users db)))))
 
 (reg-sub
   ::network-repl-editor-keys

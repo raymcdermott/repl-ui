@@ -5,7 +5,6 @@
     [clojure.string :as string]
     [re-frame.core :as re-frame :refer [reg-event-db reg-event-fx reg-fx]]
     [repl.repl.ziggy.code-mirror :as code-mirror]
-    [repl.repl.ziggy.db :as db]
     [repl.repl.ziggy.helpers :refer [js->cljs]]
     [repl.repl.ziggy.ws :as ws]
     [repl.repl.user :as user]
@@ -17,7 +16,8 @@
 (reg-event-db
   ::initialize-db
   (fn [_ _]
-    db/default-db))
+    {::name             "repl"
+     ::other-visibility true}))
 
 (reg-event-db
   ::network-status
@@ -28,8 +28,7 @@
   ::client-uid
   (fn [db [_ uid]]
     (if-let [{::user/keys [name]} (::user/user db)]
-      (do (println "Reconnecting existing user uid")
-          (assoc db ::user/user (user/->user name uid)))
+      (assoc db ::user/user (user/->user name uid))
       (assoc db ::user/uid uid))))
 
 (defn pred-fails
@@ -237,10 +236,9 @@
     (assoc db ::user/user user)))
 
 (reg-event-db
-  ::users
-  (fn [db [_ users]]
-    (println ::users users)
-    (assoc db ::user/users users)))
+  ::toggle-others
+  (fn [db _]
+    (assoc db ::other-visibility (not (::other-visibility db)))))
 
 (reg-event-db
   ::code-mirror
@@ -248,19 +246,25 @@
     (assoc db :code-mirror code-mirror)))
 
 (reg-event-db
-  `::other-user-code-mirror
+  ::other-user-code-mirror
   (fn [db [_ code-mirror user]]
-    (let [user-key         (keyword (::user/name user))
-          user-code-mirror (assoc {} user-key code-mirror)]
+    (let [[user-key _] (first user)]
       (assoc db :other-user-code-mirrors
                 (merge (:other-user-code-mirrors db)
-                       user-code-mirror)))))
+                       (assoc {} user-key code-mirror))))))
 
+(reg-event-db
+  ::users
+  (fn [db [_ users]]
+    (assoc db ::user/users users)))
+
+;; TODO NEXT
 (reg-event-fx
   ::other-user-keystrokes
-  (fn [{:keys [db]} [_ {:keys [user form]}]]
+  (fn [{:keys [db]} [_ {:keys [user form] :as xxx}]]
+    (println ::other-user-keystrokes :xxx xxx)
     (when-not (= user (::user/user db))
-      (let [editor-key   (keyword (::user/name user))
+      (let [editor-key   (first user)
             code-mirrors (:other-user-code-mirrors db)
             code-mirror  (get code-mirrors editor-key)]
         {:db                        db
