@@ -7,7 +7,8 @@
     [repl.repl.ziggy.code-mirror :as code-mirror]
     [repl.repl.ziggy.helpers :refer [js->cljs]]
     [repl.repl.ziggy.ws :as ws]
-    [repl.repl.user :as user]
+    [repl.repl.messages :as message-specs]
+    [repl.repl.user :as user-specs]
     [taoensso.sente :as sente]))
 
 (def default-server-timeout 3000)
@@ -27,9 +28,9 @@
 (reg-event-db
   ::client-uid
   (fn [db [_ uid]]
-    (if-let [{::user/keys [name]} (::user/user db)]
-      (assoc db ::user/user (user/->user name uid))
-      (assoc db ::user/uid uid))))
+    (if-let [{::user-specs/keys [name]} (::user-specs/user db)]
+      (assoc db ::user-specs/user (user-specs/->user name uid))
+      (assoc db ::user-specs/uid uid))))
 
 (defn pred-fails
   [problems]
@@ -145,7 +146,7 @@
 (reg-event-fx
   ::eval
   (fn [{:keys [db]} [_ input]]
-    (let [user         (::user/user db)
+    (let [user         (::user-specs/user db)
           form-to-eval (if (string? input) input (:form input))]
       {:db          (assoc db :form-to-eval form-to-eval)
        ::>repl-eval [:user user form-to-eval]})))
@@ -153,8 +154,8 @@
 (reg-fx
   ::>login
   (fn [{:keys [options timeout]}]
-    (let [user (user/->user (::user/name options)
-                            (::user/uid options))]
+    (let [user (user-specs/->user (::user-specs/name options)
+                                  (::user-specs/uid options))]
       (ws/chsk-send!
         [:repl-repl/login user]
         (or timeout default-server-timeout)
@@ -167,12 +168,12 @@
 (reg-event-fx
   ::login
   (fn [{:keys [db]} [_ login-options]]
-    (when-let [uid (::user/uid db)]
+    (when-let [uid (::user-specs/uid db)]
       {:db      (assoc db
-                  :proposed-user (::user/name login-options)
-                  ::user/name nil)
+                  :proposed-user (::user-specs/name login-options)
+                  ::user-specs/name nil)
        ::>login {:options
-                 (assoc login-options ::user/uid uid)}})))
+                 (assoc login-options ::user-specs/uid uid)}})))
 
 (reg-fx
   ::>logout
@@ -183,8 +184,8 @@
 (reg-event-fx
   ::logout
   (fn [{:keys [db]} _]
-    (when-let [user (::user/user db)]
-      {:db       (dissoc db ::user/user)
+    (when-let [user (::user-specs/user db)]
+      {:db       (dissoc db ::user-specs/user)
        ::>logout {:options user}})))
 
 (reg-event-db
@@ -209,31 +210,29 @@
 
 ;; ---------------------- Network sync
 
-;; Text
+;; Share editing updates
 (reg-fx
   ::>current-form
-  (fn [[user other-users current-form]]
-    (when other-users
+  (fn [[user user-count form]]
+    (when (> user-count 1)
       (ws/chsk-send!
-        [:reptile/keystrokes {:form current-form
-                              :user user}]))))
+        [:repl-repl/keystrokes (message-specs/->keystrokes form user)]))))
 
 (reg-event-fx
   ::current-form
   (fn [{:keys [db]} [_ current-form]]
     (when-not (string/blank? (string/trim current-form))
-      (let [user        (::user/user db)
-            other-users (user/other-users (::user/name user)
-                                          (::user/users db))]
+      (let [user       (::user-specs/user db)
+            user-count (count (::user-specs/users db))]
         {:db             (assoc db :current-form current-form)
-         ::>current-form [user other-users current-form]}))))
+         ::>current-form [user user-count current-form]}))))
 
 ;; ------------------------------------------------------------------
 
 (reg-event-db
   ::logged-in-user
   (fn [db [_ user]]
-    (assoc db ::user/user user)))
+    (assoc db ::user-specs/user user)))
 
 (reg-event-db
   ::toggle-others
@@ -248,26 +247,28 @@
 (reg-event-db
   ::other-user-code-mirror
   (fn [db [_ code-mirror user]]
-    (let [[user-key _] (first user)]
-      (assoc db :other-user-code-mirrors
-                (merge (:other-user-code-mirrors db)
-                       (assoc {} user-key code-mirror))))))
+    (let [user-key   (first user)
+          cm-entries (:other-user-code-mirrors db)
+          cm-entry   (assoc {} user-key code-mirror)
+          cm-update  (merge cm-entries cm-entry)]
+      (assoc db :other-user-code-mirrors cm-update))))
 
 (reg-event-db
   ::users
   (fn [db [_ users]]
-    (assoc db ::user/users users)))
+    (assoc db ::user-specs/users users)))
 
 ;; TODO NEXT
 (reg-event-fx
   ::other-user-keystrokes
-  (fn [{:keys [db]} [_ {:keys [user form] :as xxx}]]
-    (println ::other-user-keystrokes :xxx xxx)
-    (when-not (= user (::user/user db))
-      (let [editor-key   (first user)
+  (fn [{:keys [db]} [_ {:keys [::user-specs/user
+                               ::message-specs/form]}]]
+    (when-not (= user (::user-specs/user db))
+      (let [editor-key   (keyword (::user-specs/name user))
             code-mirrors (:other-user-code-mirrors db)
             code-mirror  (get code-mirrors editor-key)]
         {:db                        db
-         ::code-mirror/set-cm-value [code-mirror form]}))))
+         ::code-mirror/set-cm-value {:code-mirror code-mirror
+                                     :value       form}}))))
 
 
