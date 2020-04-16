@@ -1,13 +1,13 @@
-(ns repl.repl.ziggy.views.other-editor
+(ns repl.repl.views.other-editor
   (:require
     [re-frame.core :as re-frame :refer [subscribe]]
     [re-com.core :refer [box h-box v-box gap label
                          md-icon-button slider flex-child-style]]
     [re-com.splits :refer [hv-split-args-desc]]
     [reagent.core :as reagent]
-    [repl.repl.ziggy.subs :as subs]
-    [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.code-mirror :as code-mirror]
+    [repl.repl.helpers :as helpers]
+    [repl.repl.events :as events]
+    [repl.repl.code-mirror :as code-mirror]
     [repl.repl.user :as user]))
 
 (defonce other-editors-style {:padding "20px 20px 20px 10px"})
@@ -32,8 +32,7 @@
        :display-name         (str "network-editor-" editor-name)})))
 
 ; 1 - use the outer / inner pattern
-; 2 - use the visible invisible property on each editor icon
-; 3 - outer component to subscribe on the given editor and check the visibility
+; 2 - outer component to subscribe on visibility
 
 (defonce other-panel-style
          (merge (flex-child-style "1")
@@ -55,11 +54,11 @@
        :children
        [[label :label user-name]
         [h-box :gap "5px" :children
-         [[md-icon-button :md-icon-name "zmdi-keyboard" :size :smaller]
+         [(helpers/icon-button "keyboard")
           ;; TODO make this dynamic to reflect incoming keystrokes
           (rand-nth
-            [[md-icon-button :md-icon-name "zmdi-comment-more" :size :smaller]
-             [md-icon-button :md-icon-name "zmdi-comment-outline" :size :smaller]])]]]]]]))
+            [(helpers/icon-button "comment-more")
+             (helpers/icon-button "comment-outline")])]]]]]]))
 
 (defn waiting-panel
   []

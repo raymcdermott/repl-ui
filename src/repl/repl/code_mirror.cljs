@@ -1,4 +1,4 @@
-(ns repl.repl.ziggy.code-mirror
+(ns repl.repl.code-mirror
   "Code mirror support"
   (:require
     [re-frame.core :refer [reg-fx dispatch]]

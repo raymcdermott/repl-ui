@@ -1,10 +1,9 @@
-(ns repl.repl.ziggy.core
+(ns repl.repl.core
   (:require
     [reagent.core :as reagent]
     [re-frame.core :as re-frame]
-    [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.main-view :as main-view]
-    [repl.repl.ziggy.config :as config]))
+    [repl.repl.events :as events]
+    [repl.repl.main-view :as main-view]))
 
 (defn dev-setup []
   (enable-console-print!))

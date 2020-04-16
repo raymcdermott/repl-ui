@@ -1,10 +1,10 @@
-(ns repl.repl.ziggy.views.show-team-data
+(ns repl.repl.views.show-team-data
   (:require
     [re-frame.core :refer [subscribe dispatch]]
     [re-com.core :refer [v-box h-box box button gap line border label p
                          input-text input-textarea modal-panel title radio-button]]
-    [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.subs :as subs]))
+    [repl.repl.events :as events]
+    [repl.repl.subs :as subs]))
 
 (defn team-data-modal
   [{:keys [team-name team-secret]}]

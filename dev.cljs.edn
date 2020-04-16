@@ -2,6 +2,6 @@
  :output-to       "resources/public/js/compiled/app.js"
  :output-dir      "resources/public/js/compiled/out"
  :asset-path      "js/compiled/out"
- :closure-defines {repl.repl.ziggy.config/TAIL_SERVER      "localhost"
-                   repl.repl.ziggy.config/TAIL_SERVER_PORT "58885"}
+ :closure-defines {repl.repl.config/TAIL_SERVER      "localhost"
+                   repl.repl.config/TAIL_SERVER_PORT "58885"}
  :external-config {:devtools/config {:features-to-install :all}}}

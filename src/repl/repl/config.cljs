@@ -1,4 +1,4 @@
-(ns repl.repl.ziggy.config)
+(ns repl.repl.config)
 
 (defonce server-host "localhost:56665")
 

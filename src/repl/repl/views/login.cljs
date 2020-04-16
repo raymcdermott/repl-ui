@@ -1,11 +1,11 @@
-(ns repl.repl.ziggy.views.login
+(ns repl.repl.views.login
   (:require
     [reagent.core :as reagent]
     [re-frame.core :as re-frame]
     [re-com.core :refer [h-box v-box button gap border label input-text
                          modal-panel title radio-button]]
-    [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.subs :as subs]
+    [repl.repl.events :as events]
+    [repl.repl.subs :as subs]
     [repl.repl.user :as user]))
 
 ;; TODO Routing man, come on...

@@ -1,12 +1,12 @@
-(ns repl.repl.ziggy.events
+(ns repl.repl.events
   (:require
     [cljs.tools.reader.edn :as rdr]
     [clojure.core.async]
     [clojure.string :as string]
     [re-frame.core :as re-frame :refer [reg-event-db reg-event-fx reg-fx]]
-    [repl.repl.ziggy.code-mirror :as code-mirror]
-    [repl.repl.ziggy.helpers :refer [js->cljs]]
-    [repl.repl.ziggy.ws :as ws]
+    [repl.repl.code-mirror :as code-mirror]
+    [repl.repl.helpers :refer [js->cljs]]
+    [repl.repl.ws :as ws]
     [repl.repl.messages :as message-specs]
     [repl.repl.user :as user-specs]
     [taoensso.sente :as sente]))

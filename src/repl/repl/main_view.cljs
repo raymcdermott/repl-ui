@@ -1,9 +1,9 @@
-(ns repl.repl.ziggy.main-view
+(ns repl.repl.main-view
   (:require
     [re-frame.core :refer [subscribe]]
-    [repl.repl.ziggy.subs :as subs]
-    [repl.repl.ziggy.views.login :as login]
-    [repl.repl.ziggy.views.editor :as editor]))
+    [repl.repl.subs :as subs]
+    [repl.repl.views.login :as login]
+    [repl.repl.views.editor :as editor]))
 
 (defn main-panel
   []

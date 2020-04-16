@@ -1,4 +1,4 @@
-(ns repl.repl.ziggy.views.visual-history
+(ns repl.repl.views.visual-history
   (:require
     [clojure.string :as string]
     [reagent.core :as reagent]
@@ -7,8 +7,8 @@
                          md-icon-button input-textarea modal-panel h-split v-split title flex-child-style
                          popover-anchor-wrapper popover-content-wrapper radio-button p]]
     [re-com.splits :refer [hv-split-args-desc]]
-    [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.subs :as subs]))
+    [repl.repl.events :as events]
+    [repl.repl.subs :as subs]))
 
 
 (defonce label-style {:font-family "Menlo, Lucida Console, Monaco, monospace"

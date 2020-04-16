@@ -1,11 +1,11 @@
-(ns repl.repl.ziggy.views.add-lib
+(ns repl.repl.views.add-lib
   (:require
     [re-frame.core :refer [subscribe dispatch]]
     [re-com.core :refer [v-box box button gap line border label p
                          input-text input-textarea modal-panel title radio-button]]
     [reagent.core :as reagent]
-    [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.subs :as subs]))
+    [repl.repl.events :as events]
+    [repl.repl.subs :as subs]))
 
 (defn lib-type
   [lib-data]

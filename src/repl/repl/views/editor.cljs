@@ -1,4 +1,4 @@
-(ns repl.repl.ziggy.views.editor
+(ns repl.repl.views.editor
   (:require
     [re-frame.core :refer [subscribe dispatch]]
     [re-com.core :refer [h-box v-box box button gap line scroller border label input-text md-circle-icon-button
@@ -6,14 +6,14 @@
                          popover-content-wrapper title flex-child-style p slider]]
     [re-com.splits :refer [hv-split-args-desc]]
     [reagent.core :as reagent]
-    [repl.repl.ziggy.code-mirror :as code-mirror]
-    [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.subs :as subs]
-    [repl.repl.ziggy.views.other-editor :as other-editor]
-    [repl.repl.ziggy.views.add-lib :as add-lib]
-    [repl.repl.ziggy.views.show-team-data :as team]
-    [repl.repl.ziggy.views.eval :as eval-view]
-    [repl.repl.ziggy.views.status :as status]
+    [repl.repl.code-mirror :as code-mirror]
+    [repl.repl.events :as events]
+    [repl.repl.subs :as subs]
+    [repl.repl.views.other-editor :as other-editor]
+    [repl.repl.views.add-lib :as add-lib]
+    [repl.repl.views.show-team-data :as team]
+    [repl.repl.views.eval :as eval-view]
+    [repl.repl.views.status :as status]
     [repl.repl.user :as user]))
 
 (defonce default-style {:font-family   "Menlo, Lucida Console, Monaco, monospace"

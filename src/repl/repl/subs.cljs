@@ -1,4 +1,4 @@
-(ns repl.repl.ziggy.subs
+(ns repl.repl.subs
   (:require
     [re-frame.core :refer [reg-sub]]
     [repl.repl.user :as user]))

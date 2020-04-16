@@ -1,4 +1,4 @@
-(ns repl.repl.ziggy.views.eval
+(ns repl.repl.views.eval
   (:require
     [re-frame.core :as re-frame]
     [re-com.core :refer [h-box v-box box button gap line border label input-text
@@ -6,10 +6,10 @@
                          popover-anchor-wrapper popover-content-wrapper modal-panel
                          h-split v-split title flex-child-style radio-button p]]
     [reagent.core :as reagent]
-    [repl.repl.ziggy.subs :as subs]
-    [repl.repl.ziggy.events :as events]
-    [repl.repl.ziggy.code-mirror :as code-mirror]
-    [repl.repl.ziggy.views.visual-history :as visual-history]))
+    [repl.repl.subs :as subs]
+    [repl.repl.events :as events]
+    [repl.repl.code-mirror :as code-mirror]
+    [repl.repl.views.visual-history :as visual-history]))
 
 ; padding order is: top right bottom left
 (defonce eval-panel-style (merge (flex-child-style "1")

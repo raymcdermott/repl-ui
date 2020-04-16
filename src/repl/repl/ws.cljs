@@ -1,4 +1,4 @@
-(ns repl.repl.ziggy.ws
+(ns repl.repl.ws
   (:require
     goog.date.Date
     [taoensso.encore :as encore :refer [have have?]]
@@ -6,7 +6,7 @@
     [taoensso.sente :as sente :refer [cb-success?]]
     [taoensso.sente.packers.transit :as sente-transit]
     [re-frame.core :as re-frame]
-    [repl.repl.ziggy.config :as config]))
+    [repl.repl.config :as config]))
 
 ; --- WS client ---
 (declare chsk ch-chsk chsk-send! chsk-state)
@@ -28,10 +28,10 @@
   [{:keys [?data]}]
   (let [[_ new-state-map] (have vector? ?data)]
     (re-frame/dispatch
-      [:repl.repl.ziggy.events/client-uid
+      [:repl.repl.events/client-uid
        (:uid new-state-map)])
     (re-frame/dispatch
-      [:repl.repl.ziggy.events/network-status
+      [:repl.repl.events/network-status
        (:open? new-state-map)])))
 
 (defmethod -event-msg-handler :chsk/recv
@@ -41,17 +41,17 @@
     (cond
       (= push-event :repl-repl/keystrokes)
       (re-frame/dispatch
-        [:repl.repl.ziggy.events/other-user-keystrokes
+        [:repl.repl.events/other-user-keystrokes
          push-data])
 
       (= push-event :repl-repl/users)
       (re-frame/dispatch
-        [:repl.repl.ziggy.events/users
+        [:repl.repl.events/users
          push-data])
 
       (= push-event :repl-repl/eval)
       (re-frame/dispatch
-        [:repl.repl.ziggy.events/eval-result
+        [:repl.repl.events/eval-result
          push-data])
 
       (= push-event :chsk/ws-ping)
@@ -66,7 +66,7 @@
   ;; TODO add the user in here if we are logged in
   (println ::handshake)
   (re-frame/dispatch
-    [:repl.repl.ziggy.events/team-bootstrap]))
+    [:repl.repl.events/team-bootstrap]))
 
 (defonce router_ (atom nil))
 
