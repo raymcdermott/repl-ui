@@ -196,7 +196,7 @@
 (reg-event-fx
   ::add-lib
   (fn [cofx [_ {:keys [name version url sha maven] :as lib}]]
-    (let [use-ns   "(use 'clojure.tools.deps.alpha.repl)"
+    (let [use-ns   "(use 'clj-deps.core)"
           lib-spec (str "(add-lib '" (string/trim name) " {"
                         (if maven
                           (str ":mvn/version \""
@@ -206,7 +206,7 @@
                                (string/trim sha) "\""))
                         "})")]
       {:db          (assoc (:db cofx) :proposed-lib lib)
-       ::>repl-eval [:system (str use-ns "\n" lib-spec)]})))
+       ::>repl-eval [:user "system" (str use-ns "\n" lib-spec)]})))
 
 ;; ---------------------- Network sync
 

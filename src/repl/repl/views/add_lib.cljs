@@ -76,9 +76,9 @@
     (fn []
       (when @show-add-lib?
         (let [lib-data      (reagent/atom {:name    "org.clojure/test.check"
-                                           :version "0.10.0-alpha3"
+                                           :version "1.1.0"
                                            :url     "https://github.com/clojure/test.check.git"
-                                           :sha     "8bc8057d7954674673ae0329b3233139ddba3f71"
+                                           :sha     "e8e6436a13e958a115714a1b29cd76ffcc2e0c39"
                                            :maven   true})
               add-lib-event (fn [] (dispatch [::events/add-lib @lib-data]))]
           [modal-panel

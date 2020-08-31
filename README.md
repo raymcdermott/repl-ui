@@ -2,7 +2,7 @@
 
 <img align="left" src="https://github.com/raymcdermott/repl-tongue/blob/master/resources/public/images/repl-logo-yellow-transparent.png" width="100">
 
-Web UI part of the [`REPL-REPL` shared REPL](https://github.com/raymcdermott/reptile-body). You use it to enter forms and see the results of evaluation. You can also watch your friends editing in real-time and share their REPL evaluations.
+Web UI part of the [`REPL-REPL` shared REPL](https://github.com/raymcdermott/repl-node). You use it to enter forms and see the results of evaluation. You can also watch your friends editing in real-time and share their REPL evaluations.
 
 The technical implementation is a [re-frame](https://github.com/Day8/re-frame) based Single Page Application (SPA).
 
@@ -30,13 +30,13 @@ The technical implementation is a [re-frame](https://github.com/Day8/re-frame) b
 - [ ] Incremental feedback on long running REPL evaluations
 - [ ] Cancel long running REPL evaluations
 
-### Deps.edn
+### Dynamic library addition
 - [X] Add a library on demand (Maven & Git SHAs)
 
 ### Security
 - [X] Secure REPtiLe server connection
 
-### REPtiLe developer features
+### REPtiLe developer hacking features
 - [X] Live reloadable client code
 - [X] Live reloadable server code
 
@@ -50,20 +50,8 @@ The technical implementation is a [re-frame](https://github.com/Day8/re-frame) b
 ### Running with a REPL:
 
 ```
-clojure -A:fig:repl:body:body-path
+clojure -A:fig:repl
 ```
-
-### Run application on the command line:
-
-```
-clojure -A:fig:dev:body:body-path
-```
-
-Figwheel will automatically push cljs changes to the browser.
-
-Wait a bit, then browse to [http://localhost:9500](http://localhost:9500).
-
-The REPtiLe server will be started in the background so there is no need to start a separate server in the development process.
 
 ## Configuration
 

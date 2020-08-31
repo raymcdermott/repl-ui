@@ -96,19 +96,19 @@
    :children
    [[box :align :center :justify :start
      :child
-     [button :label "👋🏽" :class "btn-default btn"
+     [button :label "Logout" :class "btn-danger btn"
       :tooltip "Logout of the system"
       :on-click #(dispatch [::events/logout])]]
     [h-box :align :center
      :children
      [[add-lib/add-lib-panel]
-      [button :label "✚ ⚗️" :class "btn-default btn"
+      [button :label "Add Lib️" :class "btn-success btn"
        :tooltip "Dynamically add a dependency"
        :on-click #(dispatch [::events/show-add-lib-panel true])]]]
     [h-box :align :center
      :children
      [[team/team-data-panel]
-      [button :label "✚ 👥" :class "btn-default btn"
+      [button :label "Invite" :class "btn-secondary btn"
        :tooltip "Get a link to invite others to the REPL session"
        :on-click #(dispatch [::events/show-team-data true])]]]
     [gap :size "50px"]
