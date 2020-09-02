@@ -51,7 +51,7 @@
       (rdr/read-string reader-opts val))
     (catch :default _ignore-reader-errors)))
 
-(def bugs "🐛 🐞 🐜\n")
+(def bugs "...\n")
 
 ;; TODO integrate a nice spec formatting library
 (defn check-exception
@@ -205,6 +205,7 @@
                                (string/trim url) "\" :sha \""
                                (string/trim sha) "\""))
                         "})")]
+      (re-frame/dispatch [::show-add-lib-panel false])
       {:db          (assoc (:db cofx) :proposed-lib lib)
        ::>repl-eval [:user "system" (str use-ns "\n" lib-spec)]})))
 

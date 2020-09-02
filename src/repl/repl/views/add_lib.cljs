@@ -75,10 +75,10 @@
   (let [show-add-lib? (subscribe [::subs/show-add-lib-panel])]
     (fn []
       (when @show-add-lib?
-        (let [lib-data      (reagent/atom {:name    "org.clojure/test.check"
-                                           :version "1.1.0"
-                                           :url     "https://github.com/clojure/test.check.git"
-                                           :sha     "e8e6436a13e958a115714a1b29cd76ffcc2e0c39"
+        (let [lib-data      (reagent/atom {:name    "vvvvalvalval/supdate" ;; https://github.com/vvvvalvalval/supdate
+                                           :version "0.2.3"
+                                           :url     "https://github.com/vvvvalvalval/supdate.git"
+                                           :sha     "c7afc460b68a32d2494f98a55d438b67dd677a2b"
                                            :maven   true})
               add-lib-event (fn [] (dispatch [::events/add-lib @lib-data]))]
           [modal-panel
