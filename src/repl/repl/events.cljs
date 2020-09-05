@@ -56,14 +56,12 @@
 ;; TODO integrate a nice spec formatting library
 (defn check-exception
   [val]
-  (let [{:keys [cause via trace data phase] :as exc} (read-exception val)
-        problems   (:clojure.spec.alpha/problems data)
-        spec       (:clojure.spec.alpha/spec data)
-        value      (:clojure.spec.alpha/value data)
-        args       (:clojure.spec.alpha/args data)
-        spec-fails (and problems (pred-fails problems))]
-    (when-let [problem (or spec-fails cause)]
-      (str bugs problem))))
+  (let [{:keys [cause via trace data phase]} (read-exception val)
+        problems (:clojure.spec.alpha/problems data)
+        spec     (:clojure.spec.alpha/spec data)
+        value    (:clojure.spec.alpha/value data)
+        args     (:clojure.spec.alpha/args data)]
+    (or problems cause)))
 
 (defn format-response
   [show-times? result]
@@ -75,15 +73,14 @@
            "=> " exception-data "\n\n")
 
       (= tag :err)
-      (str form "\n"
-           bugs val "\n\n")
+      (str form "\n" val "\n\n")
 
       (= tag :out)
       (str val)
 
+      ;; TODO show-user?
       (= tag :ret)
-      (str form "\n"
-           (when show-times? (str ms " ms "))
+      (str form "\n" (when show-times? (str ms " ms "))
            "=> " (or val "nil") "\n\n"))))
 
 (defn format-responses
@@ -196,8 +193,7 @@
 (reg-event-fx
   ::add-lib
   (fn [cofx [_ {:keys [name version url sha maven] :as lib}]]
-    (let [use-ns   "(use 'clj-deps.core)"
-          lib-spec (str "(add-lib '" (string/trim name) " {"
+    (let [lib-spec (str "(add-lib '" (string/trim name) " {"
                         (if maven
                           (str ":mvn/version \""
                                (string/trim version) "\"")
@@ -207,7 +203,7 @@
                         "})")]
       (re-frame/dispatch [::show-add-lib-panel false])
       {:db          (assoc (:db cofx) :proposed-lib lib)
-       ::>repl-eval [:user "system" (str use-ns "\n" lib-spec)]})))
+       ::>repl-eval [:user "system" lib-spec]})))
 
 ;; ---------------------- Network sync
 
