@@ -116,6 +116,9 @@
   (fn [db]
     (:show-team-data db)))
 
-
+(reg-sub
+  ::key-bindings
+  (fn [db]
+    (:key-bindings db)))
 
 

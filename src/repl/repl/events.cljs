@@ -13,12 +13,34 @@
 
 (def default-server-timeout 3000)
 
+(defn- key-bindings
+  [os]
+  (let [ckey (if (= os :macosx) "cmd" "ctrl")
+        keys ["enter" "up" "down" "left" "right"]]
+    (into
+      {}
+      (map
+        (fn [c-key the-key]
+          [(keyword the-key)
+           (keyword (str (string/capitalize c-key) "-" (string/capitalize the-key)))])
+        (repeat ckey) keys))))
+
+(defonce ^:private
+         os-data
+         (let [app-version (.-appVersion js/navigator)
+               os          (cond
+                             (re-find #"Win" app-version) :windows
+                             (re-find #"X11" app-version) :unix
+                             (re-find #"Linux" app-version) :linux
+                             (re-find #"Mac" app-version) :macosx
+                             :else :unknown-os)]
+           {:os os :key-bindings (key-bindings os)}))
+
 ; --- Events ---
 (reg-event-db
   ::initialize-db
   (fn [_ _]
-    {::name             "repl"
-     ::other-visibility true}))
+    (merge {::name "repl" ::other-visibility true} os-data)))
 
 (reg-event-db
   ::network-status
@@ -64,8 +86,9 @@
     (or problems cause)))
 
 (defn format-response
-  [show-times? result]
+  [show-times? user result]
   (let [{:keys [val form tag ms]} result
+        username       (::user-specs/name user)
         exception-data (check-exception val)]
     (cond
       exception-data
@@ -80,13 +103,12 @@
 
       ;; TODO show-user?
       (= tag :ret)
-      (str form "\n" (when show-times? (str ms " ms "))
+      (str "[" username "] " form "\n" (when show-times? (str ms " ms "))
            "=> " (or val "nil") "\n\n"))))
 
 (defn format-responses
-  [show-times? {:keys [prepl-response]}]
-  (doall (apply str (map (partial format-response show-times?)
-                         prepl-response))))
+  [show-times? {:keys [prepl-response user]}]
+  (doall (apply str (map (partial format-response show-times? user) prepl-response))))
 
 (defn format-results
   [show-times? results]
@@ -99,15 +121,22 @@
       {:db                        (assoc db :eval-results [])
        ::code-mirror/set-cm-value {:value       ""
                                    :code-mirror code-mirror}})))
+
+(reg-event-db
+  ::input-history
+  (fn [db [_ clojure-form]]
+    (let [history (or (:input-history db) [])]
+      (assoc db
+        :input-history (conj history clojure-form)
+        :history-index (-> history count inc)))))
+
 (reg-event-fx
   ::eval-result
   (fn [{:keys [db]} [_ eval-result]]
-    (println ::eval-result eval-result)
     (let [code-mirror  (:eval-code-mirror db)
           show-times?  (true? (:show-times db))
           eval-results (conj (:eval-results db) eval-result)
-          str-results  (apply str (reverse
-                                    (format-results show-times? eval-results)))]
+          str-results  (apply str (reverse (format-results show-times? eval-results)))]
       {:db                        (assoc db :eval-results eval-results)
        ::code-mirror/set-cm-value {:value       str-results
                                    :code-mirror code-mirror}})))
@@ -138,15 +167,16 @@
                           :source    source
                           :user      user
                           :forms     form}]
-        (or (:timeout form) default-server-timeout)))))
+        (or (:timeout form) default-server-timeout))
+      (re-frame/dispatch [::input-history form]))))
 
 (reg-event-fx
   ::eval
-  (fn [{:keys [db]} [_ input]]
+  (fn [{:keys [db]} [_]]
     (let [user         (::user-specs/user db)
-          form-to-eval (if (string? input) input (:form input))]
-      {:db          (assoc db :form-to-eval form-to-eval)
-       ::>repl-eval [:user user form-to-eval]})))
+          form         (:current-form db)]
+      {:db          (assoc db :form-to-eval form)
+       ::>repl-eval [:user user form]})))
 
 (reg-fx
   ::>login

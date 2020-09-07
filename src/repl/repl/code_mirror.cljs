@@ -11,11 +11,7 @@
 
 (defn text-area
   [id]
-  (fn
-    []
-    [:textarea {:id            id
-                ;:auto-complete false
-                :default-value ""}]))
+  (fn [] [:textarea {:id id :default-value ""}]))
 
 (defn parinfer
   [dom-node config]

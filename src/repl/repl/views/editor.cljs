@@ -37,17 +37,14 @@
   (dispatch [::events/current-form new-value change-object]))
 
 (defn editor-did-mount
-  []
+  [extra-key-bindings]
   (fn [this-textarea]
     (let [node            (reagent/dom-node this-textarea)
-          extra-edit-keys {:Cmd-Enter (fn [cm]
-                                        (dispatch
-                                          [::events/eval (.getValue cm)]))}
           options         {:options {:lineWrapping  true
                                      :autofocus     true
                                      :matchBrackets true
                                      :lineNumbers   true
-                                     :extraKeys     extra-edit-keys}}
+                                     :extraKeys     extra-key-bindings}}
           code-mirror     (code-mirror/parinfer node options)]
 
       (.on code-mirror "change" (fn [cm co]
@@ -56,29 +53,45 @@
       (dispatch [::events/code-mirror code-mirror]))))
 
 (defn edit-component
-  [panel-name]
+  [panel-name extra-key-bindings]
   (reagent/create-class
-    {:component-did-mount  (editor-did-mount)
+    {:component-did-mount  (editor-did-mount extra-key-bindings)
      :reagent-render       (code-mirror/text-area panel-name)
      :component-did-update #(-> nil)                        ; noop to prevent reload
      :display-name         "local-editor"}))
 
+(defn- key-binding
+  [key-map [button event]]
+  (assoc {} (get key-map button) #(dispatch [event])))
+
+(defn extra-key-bindings
+  [key-map event-map]
+  (apply merge (map (partial key-binding key-map) event-map)))
+
+(def event-bindings
+  {:enter ::events/eval
+   :right ::events/history-next
+   :down  ::events/history-next
+   :left  ::events/history-prev
+   :up    ::events/history-prev})
+
 (defn edit-panel
   [user]
-  (let [current-form (subscribe [::subs/current-form])]
+  (let [key-bindings (subscribe [::subs/key-bindings])]
     (fn []
-      (let [editor-name (::user/name user)]
+      (let [editor-name (::user/name user)
+            extra-keys (extra-key-bindings @key-bindings event-bindings)]
         [v-box :size "auto" :children
          [[box :size "auto"
            :style edit-panel-style
-           :child [edit-component editor-name]]
+           :child [edit-component editor-name extra-keys]]
           [gap :size "5px"]
           [h-box :children
            [[button
-             :label "Eval (or Cmd-Enter)"
-             :tooltip "Send the form(s) for evaluation"
+             :label (str "Eval")
+             :tooltip (str "Shortcut: " (some-> (:enter @key-bindings) name))
              :class "btn-success"
-             :on-click #(dispatch [::events/eval @current-form])]
+             :on-click #(dispatch [::events/eval])]
             [gap :size "5px"]]]]]))))
 
 (defn others-panel
