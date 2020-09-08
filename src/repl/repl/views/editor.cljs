@@ -39,13 +39,13 @@
 (defn editor-did-mount
   [extra-key-bindings]
   (fn [this-textarea]
-    (let [node            (reagent/dom-node this-textarea)
-          options         {:options {:lineWrapping  true
-                                     :autofocus     true
-                                     :matchBrackets true
-                                     :lineNumbers   true
-                                     :extraKeys     extra-key-bindings}}
-          code-mirror     (code-mirror/parinfer node options)]
+    (let [node        (reagent/dom-node this-textarea)
+          options     {:options {:lineWrapping  true
+                                 :autofocus     true
+                                 :matchBrackets true
+                                 :lineNumbers   true
+                                 :extraKeys     extra-key-bindings}}
+          code-mirror (code-mirror/parinfer node options)]
 
       (.on code-mirror "change" (fn [cm co]
                                   (notify-edits (.getValue cm) co)))
@@ -80,7 +80,7 @@
   (let [key-bindings (subscribe [::subs/key-bindings])]
     (fn []
       (let [editor-name (::user/name user)
-            extra-keys (extra-key-bindings @key-bindings event-bindings)]
+            extra-keys  (extra-key-bindings @key-bindings event-bindings)]
         [v-box :size "auto" :children
          [[box :size "auto"
            :style edit-panel-style
@@ -101,7 +101,7 @@
       [other-editor/other-panels other-users]
       [other-editor/waiting-panel])))
 
-(defn top-row
+(defn button-row
   []
   [h-box :height "20px"
    :style other-editor/other-editors-style
@@ -109,26 +109,25 @@
    :children
    [[box :align :center :justify :start
      :child
-     [button :label "Logout" :class "btn-danger btn"
-      :tooltip "Logout of the system"
+     [md-icon-button :size :smaller :md-icon-name "zmdi-power"
+      :tooltip "Logout"
       :on-click #(dispatch [::events/logout])]]
     [h-box :align :center
      :children
      [[add-lib/add-lib-panel]
-      [button :label "Add Lib️" :class "btn-success btn"
-       :tooltip "Dynamically add a dependency"
+      [md-icon-button :size :smaller :md-icon-name "zmdi-file-plus"
+       :tooltip "Add a dependency"
        :on-click #(dispatch [::events/show-add-lib-panel true])]]]
     [h-box :align :center
      :children
      [[team/team-data-panel]
-      [button :label "Invite" :class "btn-secondary btn"
-       :tooltip "Get a link to invite others to the REPL session"
+      [md-icon-button :size :smaller :md-icon-name "zmdi-account-add"
+       :tooltip "REPL session invite link"
        :on-click #(dispatch [::events/show-team-data true])]]]
-    [gap :size "50px"]
     [box :align :center :justify :start
      :child
-     [button :label "Hide / Show Others" :class "btn-warning btn"
-      :tooltip "Hide / Show live keyboard input from the other editors"
+     [md-icon-button :size :smaller :md-icon-name "zmdi-accounts-outline" ;; Toggle: zmdi-accounts / zmdi-accounts-outline
+      :tooltip "Hide / Show other editors"
       :on-click #(dispatch [::events/toggle-others])]]]])
 
 (defn main-panels
@@ -140,7 +139,7 @@
                      :bottom   "0px"
                      :width    "100%"}
        :children
-       [[top-row]
+       [[button-row]
         [v-split :initial-split 20 :splitter-size "5px"
          :panel-1 [others-panel @other-users]
          :panel-2 [h-split :margin "5px" :splitter-size "5px"
