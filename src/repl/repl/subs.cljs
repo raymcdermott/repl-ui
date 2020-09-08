@@ -4,6 +4,11 @@
     [repl.repl.user :as user]))
 
 (reg-sub
+  ::clojure-version
+  (fn [db]
+    (:clojure-version db)))
+
+(reg-sub
   ::user-keystrokes
   (fn [db [_ user]]
     (get-in db [:current-forms user])))

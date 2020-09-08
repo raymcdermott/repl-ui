@@ -9,7 +9,10 @@
     [repl.repl.ws :as ws]
     [repl.repl.messages :as message-specs]
     [repl.repl.user :as user-specs]
-    [taoensso.sente :as sente]))
+    [taoensso.sente :as sente]
+    [repl.repl.user :as user]))
+
+(def system-user (user/->user "system" "0"))
 
 (def default-server-timeout 3000)
 
@@ -133,13 +136,15 @@
 (reg-event-fx
   ::eval-result
   (fn [{:keys [db]} [_ eval-result]]
-    (let [code-mirror  (:eval-code-mirror db)
-          show-times?  (true? (:show-times db))
-          eval-results (conj (:eval-results db) eval-result)
-          str-results  (apply str (reverse (format-results show-times? eval-results)))]
-      {:db                        (assoc db :eval-results eval-results)
-       ::code-mirror/set-cm-value {:value       str-results
-                                   :code-mirror code-mirror}})))
+    (if (= (:form eval-result) "*clojure-version*")
+      {:db (assoc db :clojure-version (-> eval-result :prepl-response first :val))}
+      (let [code-mirror  (:eval-code-mirror db)
+            show-times?  (true? (:show-times db))
+            eval-results (conj (:eval-results db) eval-result)
+            str-results  (apply str (reverse (format-results show-times? eval-results)))]
+        {:db                        (assoc db :eval-results eval-results)
+         ::code-mirror/set-cm-value {:value       str-results
+                                     :code-mirror code-mirror}}))))
 
 (reg-event-fx
   ::show-times
@@ -172,11 +177,16 @@
 
 (reg-event-fx
   ::eval
-  (fn [{:keys [db]} [_]]
-    (let [user         (::user-specs/user db)
-          form         (:current-form db)]
+  (fn [{:keys [db]} _]
+    (let [form (:current-form db)
+          user (::user-specs/user db)]
       {:db          (assoc db :form-to-eval form)
        ::>repl-eval [:user user form]})))
+
+(reg-event-fx
+  ::clojure-version
+  (fn [_ _]
+    {::>repl-eval [:user system-user "*clojure-version*"]}))
 
 (reg-fx
   ::>login
@@ -189,7 +199,8 @@
         (fn [reply]
           (if (and (sente/cb-success? reply)
                    (= reply :login-ok))
-            (re-frame/dispatch [::logged-in-user user])
+            (do (re-frame/dispatch [::logged-in-user user])
+                (re-frame/dispatch [::clojure-version]))
             (js/alert "Login failed")))))))
 
 (reg-event-fx
@@ -233,7 +244,7 @@
                         "})")]
       (re-frame/dispatch [::show-add-lib-panel false])
       {:db          (assoc (:db cofx) :proposed-lib lib)
-       ::>repl-eval [:user "system" lib-spec]})))
+       ::>repl-eval [:user system-user lib-spec]})))
 
 ;; ---------------------- Network sync
 
