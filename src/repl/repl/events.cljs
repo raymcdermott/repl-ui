@@ -89,8 +89,8 @@
     (or problems cause)))
 
 (defn format-response
-  [show-times? user result]
-  (let [{:keys [val form tag ms]} result
+  [show-times? result]
+    (let [{:keys [val form tag ms user]} result
         username       (::user-specs/name user)
         exception-data (check-exception val)]
     (cond
@@ -104,18 +104,13 @@
       (= tag :out)
       (str val)
 
-      ;; TODO show-user?
       (= tag :ret)
       (str "[" username "] " form "\n" (when show-times? (str ms " ms "))
            "=> " (or val "nil") "\n\n"))))
 
-(defn format-responses
-  [show-times? {:keys [prepl-response user]}]
-  (doall (apply str (map (partial format-response show-times? user) prepl-response))))
-
 (defn format-results
   [show-times? results]
-  (doall (map (partial format-responses show-times?) results)))
+  (doall (map (partial format-response show-times?) results)))
 
 (reg-event-fx
   ::clear-evals
@@ -135,9 +130,9 @@
 
 (reg-event-fx
   ::eval-result
-  (fn [{:keys [db]} [_ eval-result]]
-    (if (= (:form eval-result) "*clojure-version*")
-      {:db (assoc db :clojure-version (-> eval-result :prepl-response first :val))}
+  (fn [{:keys [db]} [_ {:keys [form val] :as eval-result}]]
+    (if (= form "*clojure-version*")
+      {:db (assoc db :clojure-version val)}
       (let [code-mirror  (:eval-code-mirror db)
             show-times?  (true? (:show-times db))
             eval-results (conj (:eval-results db) eval-result)
