@@ -90,16 +90,16 @@
 
 (defn format-response
   [show-times? result]
-    (let [{:keys [val form tag ms user input]} result
+    (let [{:keys [val tag ms user input]} result
         username       (::user-specs/name user)
         exception-data (check-exception val)]
     (cond
       exception-data
-      (str form "\n"
+      (str input "\n"
            "=> " exception-data "\n\n")
 
       (= tag :err)
-      (str form "\n" val "\n\n")
+      (str input "\n" val "\n\n")
 
       (= tag :out)
       (str val)
