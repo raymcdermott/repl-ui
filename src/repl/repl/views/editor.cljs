@@ -33,8 +33,8 @@
                               :color       "lightgrey"}))
 
 (defn notify-edits
-  [new-value change-object]
-  (dispatch [::events/current-form new-value change-object]))
+  [new-value]
+  (dispatch [::events/current-form new-value]))
 
 (defn editor-did-mount
   [extra-key-bindings]
@@ -47,8 +47,8 @@
                                  :extraKeys     extra-key-bindings}}
           code-mirror (code-mirror/parinfer node options)]
 
-      (.on code-mirror "change" (fn [cm co]
-                                  (notify-edits (.getValue cm) co)))
+      (.on code-mirror "change" (fn [cm _co]
+                                  (notify-edits (.getValue cm))))
 
       (dispatch [::events/code-mirror code-mirror]))))
 
