@@ -7,7 +7,8 @@
     [cljsjs.codemirror.addon.edit.matchbrackets]
     [cljsjs.codemirror.addon.hint.show-hint]
     [cljsjs.parinfer-codemirror]
-    [cljsjs.parinfer]))
+    [cljsjs.parinfer]
+    [cljsjs.google-diff-match-patch]))
 
 (defn text-area
   [id]
@@ -27,4 +28,14 @@
   ::set-cm-value
   (fn [{:keys [code-mirror value]}]
     (.setValue code-mirror value)))
+
+(reg-fx
+  ::patch-cm-value
+  (fn [{:keys [code-mirror patch]}]
+    (let [value   (.getValue code-mirror)
+          differ  (js/diff_match_patch.)
+          js-patch (.patch_fromText differ patch)
+          [new-val patched?] (.patch_apply differ js-patch value)]
+      (when patched?
+        (.setValue code-mirror new-val)))))
 

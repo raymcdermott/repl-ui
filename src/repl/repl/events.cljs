@@ -10,7 +10,8 @@
     [repl.repl.messages :as message-specs]
     [repl.repl.user :as user-specs]
     [taoensso.sente :as sente]
-    [repl.repl.user :as user]))
+    [repl.repl.user :as user]
+    [cljsjs.google-diff-match-patch]))
 
 (def system-user (user/->user "system" "0"))
 
@@ -90,7 +91,7 @@
 
 (defn format-response
   [show-times? result]
-    (let [{:keys [val tag ms user input]} result
+  (let [{:keys [val tag ms user input]} result
         username       (::user-specs/name user)
         exception-data (check-exception val)]
     (cond
@@ -246,19 +247,25 @@
 ;; Share editing updates
 (reg-fx
   ::>current-form
-  (fn [[user user-count form]]
+  (fn [[user user-count patch]]
     (when (> user-count 1)
       (ws/chsk-send!
-        [:repl-repl/keystrokes (message-specs/->keystrokes form user)]))))
+        [:repl-repl/keystrokes (message-specs/->keystrokes patch user)]))))
 
 (reg-event-fx
   ::current-form
   (fn [{:keys [db]} [_ current-form]]
     (when-not (string/blank? (string/trim current-form))
-      (let [user       (::user-specs/user db)
-            user-count (count (::user-specs/users db))]
+      (let [prev-form  (or (:current-form db) "")
+            user       (::user-specs/user db)
+            user-count (count (::user-specs/users db))
+            differ     (js/diff_match_patch.)
+            patch      (->> current-form
+                            (.diff_main differ prev-form)
+                            (.patch_make differ)
+                            (.patch_toText differ))]
         {:db             (assoc db :current-form current-form)
-         ::>current-form [user user-count current-form]}))))
+         ::>current-form [user user-count patch]}))))
 
 ;; ------------------------------------------------------------------
 
@@ -295,13 +302,13 @@
 (reg-event-fx
   ::other-user-keystrokes
   (fn [{:keys [db]} [_ {:keys [::user-specs/user
-                               ::message-specs/form]}]]
+                               ::message-specs/patch]}]]
     (when-not (= user (::user-specs/user db))
       (let [editor-key   (keyword (::user-specs/name user))
             code-mirrors (:other-user-code-mirrors db)
             code-mirror  (get code-mirrors editor-key)]
-        {:db                        db
-         ::code-mirror/set-cm-value {:code-mirror code-mirror
-                                     :value       form}}))))
+        {:db                          db
+         ::code-mirror/patch-cm-value {:code-mirror code-mirror
+                                       :patch       patch}}))))
 
 

@@ -1,19 +1,21 @@
 {:deps
- {org.clojure/clojure        {:mvn/version "1.10.1"}
+ {org.clojure/clojure            {:mvn/version "1.10.1"}
 
-  org.clojure/tools.logging  {:mvn/version "1.0.0"}
-  com.taoensso/sente         {:mvn/version "1.13.1"}
-  com.taoensso/timbre        {:mvn/version "4.10.0"}
-  com.cognitect/transit-cljs {:mvn/version "0.8.256"}
+  org.clojure/tools.logging      {:mvn/version "1.0.0"}
+  com.taoensso/sente             {:mvn/version "1.13.1"}
+  com.taoensso/timbre            {:mvn/version "4.10.0"}
+  com.cognitect/transit-cljs     {:mvn/version "0.8.256"}
 
-  re-frame                   {:mvn/version "0.10.6"}
-  re-com                     {:mvn/version "2.3.0"}
+  re-frame                       {:mvn/version "0.10.6"}
+  re-com                         {:mvn/version "2.3.0"}
 
-  cljsjs/codemirror          {:mvn/version "5.31.0-0"}
-  cljsjs/parinfer-codemirror {:mvn/version "1.4.1-2"}
+  cljsjs/codemirror              {:mvn/version "5.31.0-0"}
+  cljsjs/parinfer-codemirror     {:mvn/version "1.4.1-2"}
 
-  repl-repl/specs            {:git/url "https://github.com/raymcdermott/repl-specs.git"
-                              :sha     "f2fca99e65c9f126cdd8108948e934dc3384928b"}}
+  cljsjs/google-diff-match-patch {:mvn/version "62f2e689f498f9c92dbc588c58750addec9b1654-0"}
+
+  repl-repl/specs                {:git/url "https://github.com/raymcdermott/repl-specs.git"
+                                  :sha     "3968f52190b01ab15c1800ae7f834df979764649"}}
 
  :aliases
  {:fig       {:extra-paths ["resources" "target"]
