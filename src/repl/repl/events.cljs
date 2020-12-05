@@ -129,7 +129,7 @@
     (let [history (or (:input-history db) [])]
       (assoc db
         :input-history (conj history clojure-form)
-        :history-index (-> history count inc)))))
+        :history-index (count history)))))
 
 (reg-event-fx
   ::eval-result
@@ -176,7 +176,8 @@
                           :user      user
                           :forms     form}]
         (or (:timeout form) default-server-timeout))
-      (re-frame/dispatch [::input-history form]))))
+      (when-not (= system-user user)
+        (re-frame/dispatch [::input-history form])))))
 
 (reg-event-fx
   ::eval
