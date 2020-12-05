@@ -44,7 +44,9 @@
 (reg-event-db
   ::initialize-db
   (fn [_ _]
-    (merge {::name "repl" ::other-visibility true} os-data)))
+    (merge {::name             "repl-repl"
+            ::other-visibility true}
+           os-data)))
 
 (reg-event-db
   ::network-status
@@ -158,6 +160,11 @@
   (fn [db [_ code-mirror]]
     (assoc db :eval-code-mirror code-mirror)))
 
+(reg-event-db
+  ::team-bootstrap
+  (fn [db [_ boot]]
+    (assoc db :bootstrap boot)))
+
 (reg-fx
   ::>repl-eval
   (fn [[source user form]]
@@ -269,6 +276,32 @@
 
 ;; ------------------------------------------------------------------
 
+(defn- next-prev [db f]
+  (let [index   (f (:history-index db))
+        history (:input-history db)
+        item    (nth history index :not-found)]
+    (if (= item :not-found)
+      db
+      (assoc db :history-index index
+                :restore-item item
+                :current-form item))))
+
+(reg-event-fx
+  ::history-prev
+  (fn [{:keys [db]} _]
+    (let [db (next-prev db dec)]
+      {:db                        db
+       ::code-mirror/set-cm-value {:code-mirror (:code-mirror db)
+                                   :value (:current-form db)}})))
+
+(reg-event-fx
+  ::history-next
+  (fn [{:keys [db]} _]
+    (let [db (next-prev db inc)]
+      {:db                        db
+       ::code-mirror/set-cm-value {:code-mirror (:code-mirror db)
+                                   :value (:current-form db)}})))
+
 (reg-event-db
   ::logged-in-user
   (fn [db [_ user]]
@@ -298,7 +331,6 @@
   (fn [db [_ users]]
     (assoc db ::user-specs/users users)))
 
-;; TODO NEXT
 (reg-event-fx
   ::other-user-keystrokes
   (fn [{:keys [db]} [_ {:keys [::user-specs/user

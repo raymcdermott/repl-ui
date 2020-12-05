@@ -17,23 +17,6 @@
 
 (defonce history-style {:padding "5px 5px 0px 10px"})
 
-(defn radios-demo
-  []
-  (let [color (reagent/atom "green")]
-    (fn
-      []
-      [v-box
-       :children
-       [(doall (for [c ["red" "green" "blue"]]              ;; Notice the ugly "doall"
-                 ^{:key c}                                  ;; key should be unique among siblings
-                 [radio-button
-                  :label c
-                  :value c
-                  :model color
-                  :label-style (when (= c @color)
-                                 {:color c :font-weight "bold"})
-                  :on-change #(reset! color %)]))]])))
-
 (defn history-item-component
   [{:keys [history index]}]
   (let [line-count (-> history
@@ -72,7 +55,7 @@
 
 (defn browse-history
   []
-  (let [history (re-frame/subscribe [::subs/history])]
+  (let [history (re-frame/subscribe [::subs/input-history])]
     (fn []
       (when (seq @history)
         (let [showing? (reagent/atom false)]

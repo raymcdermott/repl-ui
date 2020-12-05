@@ -14,16 +14,6 @@
     (get-in db [:current-forms user])))
 
 (reg-sub
-  ::history
-  (fn [db]
-    (:history db)))
-
-(reg-sub
-  ::history-item
-  (fn [db]
-    (:history-item db)))
-
-(reg-sub
   ::eval-results
   (fn [db]
     (:eval-results db)))
@@ -120,6 +110,16 @@
   ::show-team-data
   (fn [db]
     (:show-team-data db)))
+
+(reg-sub
+  ::input-history
+  (fn [db]
+    (:input-history db)))
+
+(reg-sub
+  ::os
+  (fn [db]
+    (:os db)))
 
 (reg-sub
   ::key-bindings
