@@ -130,20 +130,27 @@
       :tooltip "Hide / Show other editors"
       :on-click #(dispatch [::events/toggle-others])]]]])
 
+(defn editor-repl
+  [user]
+  [h-split :margin "5px" :splitter-size "5px"
+   :panel-1 [edit-panel user]
+   :panel-2 [v-box :style eval-panel-style
+             :children [[eval-view/eval-panel user]]]])
+
+;; BUG - when other users login or logout
+;; all evals and current input is lost
 (defn main-panels
   [user]
-  (let [other-users (subscribe [::subs/other-users])]
-    (fn []
-      [v-box :style {:position "absolute"
-                     :top      "0px"
-                     :bottom   "0px"
-                     :width    "100%"}
-       :children
-       [[button-row]
+  (let [other-users @(subscribe [::subs/other-users])]
+    [v-box :style {:position "absolute"
+                   :top      "0px"
+                   :bottom   "0px"
+                   :width    "100%"}
+     :children
+     [[button-row]
+      (if-not (seq other-users)
+        [editor-repl user]
         [v-split :initial-split 20 :splitter-size "5px"
-         :panel-1 [others-panel @other-users]
-         :panel-2 [h-split :margin "5px" :splitter-size "5px"
-                   :panel-1 [edit-panel user]
-                   :panel-2 [v-box :style eval-panel-style
-                             :children [[eval-view/eval-panel user]]]]]
-        [status/status-bar user]]])))
+         :panel-1 [others-panel other-users]
+         :panel-2 [editor-repl user]])
+      [status/status-bar user]]]))

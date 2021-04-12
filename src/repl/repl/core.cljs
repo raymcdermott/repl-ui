@@ -3,6 +3,7 @@
     [reagent.core :as reagent]
     [re-frame.core :as re-frame]
     [repl.repl.events :as events]
+    [repl.repl.subs]
     [repl.repl.main-view :as main-view]))
 
 (defn dev-setup []

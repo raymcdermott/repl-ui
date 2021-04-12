@@ -29,8 +29,7 @@
            (keyword (str (string/capitalize c-key) "-" (string/capitalize the-key)))])
         (repeat ckey) keys))))
 
-(defonce ^:private
-         os-data
+(defonce ^:private os-data
          (let [app-version (.-appVersion js/navigator)
                os          (cond
                              (re-find #"Win" app-version) :windows
@@ -82,6 +81,7 @@
 (def bugs "...\n")
 
 ;; TODO integrate a nice spec formatting library
+;; TODO enable expansion or some other UI affordance for full exception data
 (defn check-exception
   [val]
   (let [{:keys [cause via trace data phase]} (read-exception val)
@@ -260,6 +260,14 @@
       (ws/chsk-send!
         [:repl-repl/keystrokes (message-specs/->keystrokes patch user)]))))
 
+(defn- form-differ
+  [current-form previous-form]
+  (let [differ (js/diff_match_patch.)]
+    (->> current-form
+         (.diff_main differ previous-form)
+         (.patch_make differ)
+         (.patch_toText differ))))
+
 (reg-event-fx
   ::current-form
   (fn [{:keys [db]} [_ current-form]]
@@ -267,13 +275,9 @@
       (let [prev-form  (or (:current-form db) "")
             user       (::user-specs/user db)
             user-count (count (::user-specs/users db))
-            differ     (js/diff_match_patch.)
-            patch      (->> current-form
-                            (.diff_main differ prev-form)
-                            (.patch_make differ)
-                            (.patch_toText differ))]
+            diff       (form-differ current-form prev-form)]
         {:db             (assoc db :current-form current-form)
-         ::>current-form [user user-count patch]}))))
+         ::>current-form [user user-count diff]}))))
 
 ;; ------------------------------------------------------------------
 
@@ -293,7 +297,7 @@
     (let [db (next-prev db dec)]
       {:db                        db
        ::code-mirror/set-cm-value {:code-mirror (:code-mirror db)
-                                   :value (:current-form db)}})))
+                                   :value       (:current-form db)}})))
 
 (reg-event-fx
   ::history-next
@@ -301,7 +305,7 @@
     (let [db (next-prev db inc)]
       {:db                        db
        ::code-mirror/set-cm-value {:code-mirror (:code-mirror db)
-                                   :value (:current-form db)}})))
+                                   :value       (:current-form db)}})))
 
 (reg-event-db
   ::logged-in-user
