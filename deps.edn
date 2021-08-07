@@ -30,6 +30,11 @@
               :extra-deps  {clojure-watch {:mvn/version "0.1.14"}}
               :main-opts   ["-m" "figwheel.main" "-b" "repl" "-r"]}
 
+  ;; Build the client
+  :dist      {:jvm-opts    ["-Xmx1g" "-Xms1g"]
+              :extra-paths ["dev"]
+              :main-opts   ["-m" "figwheel.main" "-bo" "repl"]}
+
   :test      {:extra-paths ["test"]
               :extra-deps  {olical/cljs-test-runner {:mvn/version "3.7.0"}}
               :main-opts   ["-m" "cljs-test-runner.main"]}
