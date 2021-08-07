@@ -1,7 +1,7 @@
 (ns repl.repl.ws
   (:require
     goog.date.Date
-    [taoensso.encore :as encore :refer [have have?]]
+    [taoensso.encore :refer [have have?]]
     [taoensso.timbre :refer [tracef debugf infof warnf errorf]]
     [taoensso.sente :as sente :refer [cb-success?]]
     [taoensso.sente.packers.transit :as sente-transit]
@@ -17,7 +17,7 @@
 
 (defn event-msg-handler
   "Wraps `-event-msg-handler` with logging, error catching, etc."
-  [{:as ev-msg :keys [id ?data event]}]
+  [ev-msg]
   (-event-msg-handler ev-msg))
 
 (defmethod -event-msg-handler :default
@@ -27,12 +27,8 @@
 (defmethod -event-msg-handler :chsk/state
   [{:keys [?data]}]
   (let [[_ new-state-map] (have vector? ?data)]
-    (re-frame/dispatch
-      [:repl.repl.events/client-uid
-       (:uid new-state-map)])
-    (re-frame/dispatch
-      [:repl.repl.events/network-status
-       (:open? new-state-map)])))
+    (re-frame/dispatch [:repl.repl.events/client-uid (:uid new-state-map)])
+    (re-frame/dispatch [:repl.repl.events/network-status (:open? new-state-map)])))
 
 (defmethod -event-msg-handler :chsk/recv
   [{:keys [?data]}]
@@ -40,19 +36,13 @@
         push-data  (first (rest ?data))]
     (cond
       (= push-event :repl-repl/keystrokes)
-      (re-frame/dispatch
-        [:repl.repl.events/other-user-keystrokes
-         push-data])
+      (re-frame/dispatch [:repl.repl.events/other-user-keystrokes push-data])
 
       (= push-event :repl-repl/users)
-      (re-frame/dispatch
-        [:repl.repl.events/users
-         push-data])
+      (re-frame/dispatch [:repl.repl.events/users push-data])
 
       (= push-event :repl-repl/eval)
-      (re-frame/dispatch
-        [:repl.repl.events/eval-result
-         push-data])
+      (re-frame/dispatch [:repl.repl.events/eval-result push-data])
 
       (= push-event :chsk/ws-ping)
       :noop                                                 ; do reply
@@ -64,9 +54,7 @@
 (defmethod -event-msg-handler :chsk/handshake
   []
   ;; TODO add the user in here if we are logged in
-  (println ::handshake)
-  (re-frame/dispatch
-    [:repl.repl.events/team-bootstrap]))
+  (re-frame/dispatch [:repl.repl.events/team-bootstrap]))
 
 (defonce router_ (atom nil))
 

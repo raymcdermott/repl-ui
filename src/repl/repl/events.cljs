@@ -42,7 +42,8 @@
 ; --- Events ---
 (reg-event-db
   ::initialize-db
-  (fn [_ _]
+  (fn [db _]
+    (println :init-db db)
     (merge {::name             "repl-repl"
             ::other-visibility true}
            os-data)))
@@ -55,8 +56,9 @@
 (reg-event-db
   ::client-uid
   (fn [db [_ uid]]
+    (println :client-uid db)
     (if-let [{::user-specs/keys [name]} (::user-specs/user db)]
-      (assoc db ::user-specs/user (user-specs/->user name uid))
+      (assoc db ::user-specs/user (user-specs/->user name uid) ::user-specs/uid uid)
       (assoc db ::user-specs/uid uid))))
 
 (defn pred-fails
@@ -211,11 +213,9 @@
   ::login
   (fn [{:keys [db]} [_ login-options]]
     (when-let [uid (::user-specs/uid db)]
-      {:db      (assoc db
-                  :proposed-user (::user-specs/name login-options)
-                  ::user-specs/name nil)
-       ::>login {:options
-                 (assoc login-options ::user-specs/uid uid)}})))
+      {:db      (assoc db :proposed-user (::user-specs/name login-options)
+                          ::user-specs/name nil)
+       ::>login {:options (assoc login-options ::user-specs/uid uid)}})))
 
 (reg-fx
   ::>logout
